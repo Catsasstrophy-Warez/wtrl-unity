@@ -444,3 +444,46 @@ is the one screen migrated to call through `LocalizationTable`;
 
 125/125 EditMode + 18/18 PlayMode tests pass, 16 assemblies / 85 C#
 files, no reference cycles.
+
+## Vehicle art reconciled: wheel arches + panel seams now in the wired FBX (2026-09-20)
+
+Follows up on the previously-flagged "two divergent, unreconciled
+vehicle-art passes sitting in racinggame, neither wired into Unity."
+Directly re-verified both candidate outputs by re-importing each real
+FBX into a clean Blender scene and counting actual objects/verts
+(not trusting either pass's own self-report -- one of them turned out
+to be wrong about its own output, see racinggame's
+`REFERENCE-MODELING-ACCEPTANCE.md` reconciliation entry for the full
+comparison table). The correct, complete one (97/92 mesh objects,
+matching the previously-wired baseline's object count exactly, with
+real added wheel-arch and panel-seam geometry) is now copied in as
+`Art/Vehicles/HeroCrownfire.fbx` / `MarshNsx.fbx`, replacing the pre-
+arch/seam versions. The other, incomplete pass (missing 30 and 24 mesh
+objects respectively) was deleted from `racinggame` rather than left
+to cause future confusion.
+
+Also added (not yet wired into any scene builder): `Art/Vehicles/
+LODs/{Hero,Marsh}*_LOD{1,2}.fbx` and `Art/Vehicles/Collision/
+{Hero,Marsh}*_collision.fbx` -- real generated assets, genuinely
+unused by any code yet. Wiring LOD selection and collision meshes into
+the vehicle GameObjects is real remaining work, not done here.
+
+**New, real defect found and left open**: importing the new
+`HeroCrownfire.fbx` logs 17 "polygon is self-intersecting and has been
+discarded" warnings on `Crownfire_BODY_SHELL` (Unity's FBX importer
+silently drops the offending faces rather than failing) -- a genuine
+mesh-quality side effect of the boolean wheel-arch cut / bevel seam
+operations, not present before this pass. Confirmed cosmetic-scale,
+not a functional break: the vehicle's overall bounding box and object
+count are unchanged from before (`ModelBoundsDiagnostic`: Hero
+size=(2.35,4.99,1.46), Marsh size=(2.29,4.73,1.39), byte-identical to
+pre-arch bounds), so this is a small number of discarded sliver
+triangles at the arch-cut boundary, not a corrupted or missing panel.
+Re-running the boolean/bevel scripts with cleanup (`bpy.ops.mesh
+.remove_doubles` / a "Fix Non-Manifold" pass) before export would be
+the real fix -- not attempted here, since it requires Blender-side
+mesh-surgery work, not a Unity-side change.
+
+Rebuilt `VerticalSlice.unity` and all 6 `Scenes/Tracks/*.unity` scenes
+against the new FBX files; 125/125 EditMode + 18/18 PlayMode tests
+still pass, 16 assemblies / 85 C# files, no reference cycles.

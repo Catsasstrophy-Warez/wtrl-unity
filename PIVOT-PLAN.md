@@ -936,3 +936,36 @@ lives in the linked file — this is a pointer, not a replacement.
   `Tests/EditMode/*.cs`, but the real Unity Test Runner has
   consistently reported 125 across several runs this session -- not
   re-investigated further, noted for whoever looks next) (Claude).
+
+- 2026-09-20: Reconciled the two divergent vehicle-art passes flagged
+  as the top recommendation from the prior audit. Directly re-verified
+  both candidate FBX outputs by re-importing each into a clean Blender
+  scene and counting real objects/verts/faces, rather than trusting
+  either pass's own changelog self-report -- this caught that one pass
+  (`export/HeroCrownfire.fbx`/`MarshNsx.fbx`, built from v5/v4
+  baselines) was genuinely broken: it silently dropped 30 and 24 mesh
+  objects respectively (67/68 objects vs. the real 97/92), and its own
+  self-reported "2235 verts / 1320 faces" for Crownfire didn't even
+  match a fresh re-import of its own file (6108/5414 verts/faces) --
+  that pass's verification step was itself wrong, not just its export.
+  The other pass (`export/pipeline_updated/`, built from the v7/v6
+  baselines that were already the real Unity-wired ones) had the
+  correct 97/92 object counts with real added wheel-arch/seam
+  geometry. Adopted that one as canonical: copied into
+  `WTRL-Unity/Assets/.../Art/Vehicles/HeroCrownfire.fbx`/`MarshNsx.fbx`
+  (replacing the pre-arch/seam versions) plus their LOD/collision FBX
+  siblings (not yet wired into any scene builder). Deleted the broken
+  pass's entire output from `racinggame` rather than leave two
+  candidate sources on disk. Also fixed `REFERENCE-MODELING-
+  ACCEPTANCE.md`'s "Current accepted blockout baselines" section,
+  which had been pointing at the wrong (v5/v4) baseline files this
+  whole time -- a stale pointer that predated both of today's passes.
+  Found one new real defect while verifying: Unity's FBX importer logs
+  17 "self-intersecting polygon discarded" warnings on the new
+  `Crownfire_BODY_SHELL`, a real mesh-quality side effect of the
+  boolean/bevel operations -- confirmed cosmetic-scale (overall bounds
+  and object count unchanged via `ModelBoundsDiagnostic`), left open
+  as a known defect rather than silently ignored. Rebuilt
+  `VerticalSlice.unity` and all 6 track scenes against the new FBX;
+  125/125 EditMode + 18/18 PlayMode tests still pass, 16 assemblies /
+  85 C# files, no reference cycles (Claude).
