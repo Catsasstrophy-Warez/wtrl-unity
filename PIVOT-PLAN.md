@@ -368,3 +368,24 @@ than assuming it.
   8 new), 63/63 passing project-wide across all eight real assemblies
   now shipped (Vehicle, Racing, Garage, Lab, RPG, World, Events,
   Career). Moving on to WTRL.Persistence next per instruction (Claude).
+- 2026-09-19: Ported `WTRL.Persistence` from `SwiftRacer`'s
+  `CareerSave.swift`/`CareerSaveCodec` — the lenient-decode DTO shape
+  (every field optional with a default, hero-gen1->hero-1965 rename,
+  selected-vehicle-must-be-owned invariant), using System.Text.Json.
+  Added a real (mechanical, not architectural) asmdef dependency:
+  `WTRL.Racing`, needed because `CareerState.RivalBehavior` exposes
+  `RivalMemory` (a `WTRL.Racing` type) that this assembly must name
+  directly to serialize. Caught and fixed a real near-bug along the
+  way: adding save-relevant fields to `CareerState` without updating
+  `Clone()`/`CopyFrom()` would have meant every `CareerTransaction
+  .Apply` silently reset the player's selected vehicle and dyno slider
+  values — fixed before any test was written against it, documented in
+  both files. Deferred `runEvidence`/`dynoRuns`/`ghostReplays` (need
+  `WTRL.Lab` or a not-yet-ported replay type) for the same reason
+  `WTRL.Career` deferred `.recordEvidence`. Verified: 0 errors, 0
+  warnings, 7 new tests (round-trips, the rename migration, the
+  ownership invariant, garbage-JSON resilience) with no Swift-test
+  equivalent to port. **70/70 passing project-wide across all nine
+  real assemblies now shipped**: Vehicle, Racing, Garage, Lab, RPG,
+  World, Events, Career, Persistence. Moving on to WTRL.Runtime next
+  per instruction (Claude).

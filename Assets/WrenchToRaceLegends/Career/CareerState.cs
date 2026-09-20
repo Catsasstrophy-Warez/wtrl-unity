@@ -45,24 +45,55 @@ namespace WTRL.Career
         public Dictionary<string, double> RaceRecords { get; private set; } = new();
         public Dictionary<string, List<VehicleHistoryEvent>> VehicleHistory { get; private set; } = new();
 
+        // Plain save fields with no CareerCommand of their own — ported
+        // from SwiftRacer's CareerSave, which has these as ordinary
+        // mutable values outside its own transaction system too (its
+        // CareerCommand enum has no case for any of these either).
+        public bool LicensePassed { get; set; }
+        public string SelectedVehicleId { get; set; } = "hero-1965";
+        public HashSet<string> OwnedVehicleIds { get; private set; } = new() { "hero-1965" };
+        public double DynoFinalDrive { get; set; } = 0.5;
+        public double DynoTirePressure { get; set; } = 0.5;
+        public double DynoNitrous { get; set; } = 0.3;
+
         public RivalBehaviorRuntime RivalBehavior { get; private set; } = new();
         public ReputationState ReputationState { get; private set; } = new();
         public SafetyRatingState SafetyRating { get; private set; } = new();
         public DriverLicenseState DriverLicense { get; private set; } = new();
         public List<SavedBuildRecipe> SavedRecipes { get; private set; } = new();
 
-        /// <summary>Deep copy — used by <see cref="CareerTransaction.Apply"/>
-        /// to build a candidate state that mutations apply to, so a
-        /// failed command in the middle of a batch never leaves the real
-        /// state partially mutated. See that method's doc for why this
-        /// matters (it's the whole point of the original Swift design).
-        /// Note: <see cref="RivalBehavior"/>/<see cref="ReputationState"/>/
-        /// etc. are NOT deep-cloned here (those types don't expose the
-        /// internals a clone would need, and no <see cref="CareerCommand"/>
-        /// currently mutates them) — only the fields
-        /// <see cref="CareerTransaction"/> actually touches are cloned.
-        /// If a future command needs to mutate one of those atomically
-        /// too, this method needs extending first.</summary>
+        /// <summary>Deep copy of every field — used by
+        /// <see cref="CareerTransaction.Apply"/> to build a candidate
+        /// state that mutations apply to, so a failed command in the
+        /// middle of a batch never leaves the real state partially
+        /// mutated. See that method's doc for why this matters (it's the
+        /// whole point of the original Swift design).
+        ///
+        /// IMPORTANT for future edits: this deliberately copies EVERY
+        /// field, not just the ones <see cref="CareerTransaction"/>'s
+        /// commands currently touch. An earlier version of this method
+        /// only copied the transaction-relevant fields, on the reasoning
+        /// that nothing else needed atomicity — but <see cref="Clone"/>'s
+        /// object-initializer syntax means any field NOT explicitly
+        /// listed silently resets to its default rather than copying from
+        /// <c>this</c>. That would have meant every single
+        /// <see cref="CareerTransaction.Apply"/> call reset
+        /// <see cref="SelectedVehicleId"/>/<see cref="OwnedVehicleIds"/>/
+        /// dyno slider values back to their defaults — caught before it
+        /// shipped, not after. If you add a new field to
+        /// <see cref="CareerState"/>, add it here and to
+        /// <see cref="CopyFrom"/> in the SAME edit, or it WILL silently
+        /// reset on every transaction.
+        /// <see cref="RivalBehavior"/>/<see cref="ReputationState"/>/
+        /// <see cref="SafetyRating"/>/<see cref="DriverLicense"/>/
+        /// <see cref="SavedRecipes"/> are reference-copied (not deep-
+        /// cloned) since those types don't expose the internals a deep
+        /// clone would need and no <see cref="CareerCommand"/> mutates
+        /// them — they're the same object on both the original and the
+        /// clone, which is safe only because nothing mutates them during
+        /// a transaction. If a future command needs to mutate one of
+        /// those atomically too, this note is your warning that it isn't
+        /// safe yet.</summary>
         public CareerState Clone()
         {
             var copy = new CareerState
@@ -74,6 +105,12 @@ namespace WTRL.Career
                 CompletedRaceIds = new HashSet<string>(CompletedRaceIds),
                 RaceRecords = new Dictionary<string, double>(RaceRecords),
                 VehicleHistory = VehicleHistory.ToDictionary(kv => kv.Key, kv => new List<VehicleHistoryEvent>(kv.Value)),
+                LicensePassed = LicensePassed,
+                SelectedVehicleId = SelectedVehicleId,
+                OwnedVehicleIds = new HashSet<string>(OwnedVehicleIds),
+                DynoFinalDrive = DynoFinalDrive,
+                DynoTirePressure = DynoTirePressure,
+                DynoNitrous = DynoNitrous,
                 RivalBehavior = RivalBehavior,
                 ReputationState = ReputationState,
                 SafetyRating = SafetyRating,
@@ -85,7 +122,9 @@ namespace WTRL.Career
 
         /// <summary>Copies every field <see cref="Clone"/> copies back from
         /// <paramref name="other"/> into this instance — the "commit" half
-        /// of the clone-mutate-commit pattern.</summary>
+        /// of the clone-mutate-commit pattern. Same warning as
+        /// <see cref="Clone"/>: keep this in sync with it and with the
+        /// property list above.</summary>
         public void CopyFrom(CareerState other)
         {
             Money = other.Money;
@@ -95,6 +134,12 @@ namespace WTRL.Career
             CompletedRaceIds = other.CompletedRaceIds;
             RaceRecords = other.RaceRecords;
             VehicleHistory = other.VehicleHistory;
+            LicensePassed = other.LicensePassed;
+            SelectedVehicleId = other.SelectedVehicleId;
+            OwnedVehicleIds = other.OwnedVehicleIds;
+            DynoFinalDrive = other.DynoFinalDrive;
+            DynoTirePressure = other.DynoTirePressure;
+            DynoNitrous = other.DynoNitrous;
         }
     }
 }
