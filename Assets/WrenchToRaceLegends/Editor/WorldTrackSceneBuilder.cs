@@ -192,19 +192,17 @@ namespace WTRL.EditorTools
             var scaleZ = Mathf.Max(bounds.size.z / 10f, 4f);
             ground.transform.localScale = new Vector3(scaleX, 1, scaleZ);
 
-            var groundTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/WrenchToRaceLegends/Art/Environment/Textures/world_ground_grass.png");
-            var grass = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            if (groundTex != null)
+            const string groundTexPath = "Assets/WrenchToRaceLegends/Art/Environment/Textures/world_ground_grass.png";
+            var groundTexExists = AssetDatabase.LoadAssetAtPath<Texture2D>(groundTexPath) != null;
+            var grass = PbrMaterialFactory.Create(groundTexPath);
+            if (groundTexExists)
             {
-                grass.mainTexture = groundTex;
-                grass.mainTextureScale = new Vector2(scaleX * 2f, scaleZ * 2f);
+                PbrMaterialFactory.SetTiling(grass, new Vector2(scaleX * 2f, scaleZ * 2f));
             }
             else
             {
                 grass.color = new Color(0.16f, 0.16f, 0.17f);
             }
-            grass.SetFloat("_Smoothness", 0.1f);
             ground.GetComponent<Renderer>().sharedMaterial = grass;
         }
 
@@ -215,19 +213,13 @@ namespace WTRL.EditorTools
             instance.name = $"{trackId}_track";
             instance.transform.position = new Vector3(0, 0.02f, 0);
 
-            var asphaltTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                $"{TracksArtFolder}/Textures/{trackId}_asphalt.png");
-            var barrierTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                $"{TracksArtFolder}/Textures/{trackId}_barrier_stripe.png");
+            var asphaltMat = PbrMaterialFactory.Create($"{TracksArtFolder}/Textures/{trackId}_asphalt.png");
+            var barrierMat = PbrMaterialFactory.Create($"{TracksArtFolder}/Textures/{trackId}_barrier_stripe.png");
 
             foreach (var renderer in instance.GetComponentsInChildren<Renderer>())
             {
                 var isBarrier = renderer.gameObject.name.Contains("barrier");
-                var tex = isBarrier ? barrierTex : asphaltTex;
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                if (tex != null) mat.mainTexture = tex;
-                mat.SetFloat("_Smoothness", isBarrier ? 0.5f : 0.3f);
-                renderer.sharedMaterial = mat;
+                renderer.sharedMaterial = isBarrier ? barrierMat : asphaltMat;
             }
 
             return instance;

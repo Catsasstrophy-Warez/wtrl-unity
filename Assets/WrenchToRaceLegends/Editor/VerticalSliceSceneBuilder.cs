@@ -329,19 +329,13 @@ namespace WTRL.EditorTools
             meshFilter.sharedMesh = mesh;
             meshCollider.sharedMesh = mesh; // was left null in an earlier draft -- ground had a visual mesh but no actual collision surface
 
-            var groundTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/WrenchToRaceLegends/Art/Environment/Textures/world_ground_grass.png");
-
-            var grass = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            if (groundTex != null)
-            {
-                grass.mainTexture = groundTex;
-            }
-            else
+            const string groundTexPath = "Assets/WrenchToRaceLegends/Art/Environment/Textures/world_ground_grass.png";
+            var groundTexExists = AssetDatabase.LoadAssetAtPath<Texture2D>(groundTexPath) != null;
+            var grass = PbrMaterialFactory.Create(groundTexPath);
+            if (!groundTexExists)
             {
                 grass.color = new Color(0.16f, 0.16f, 0.17f);
             }
-            grass.SetFloat("_Smoothness", 0.1f);
             meshRenderer.sharedMaterial = grass;
         }
 
@@ -471,19 +465,22 @@ namespace WTRL.EditorTools
             // interop gap, the generator now also writes each texture as
             // a plain PNG (racinggame/BlenderPipeline/export/
             // world_tracks/textures/), copied here and loaded directly.
-            var asphaltTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/WrenchToRaceLegends/Art/Tracks/Textures/foundry-row-circuit_asphalt.png");
-            var barrierTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/WrenchToRaceLegends/Art/Tracks/Textures/foundry-row-circuit_barrier_stripe.png");
+            //
+            // Now a real PBR material via PbrMaterialFactory: each
+            // albedo PNG has real normal/AO/metallic-smoothness
+            // companion maps (generate_world_tracks.py's
+            // make_asphalt_pbr_maps/make_barrier_pbr_maps), derived
+            // from the exact same procedural height field as the color
+            // texture, not painted on separately.
+            const string asphaltPath = "Assets/WrenchToRaceLegends/Art/Tracks/Textures/foundry-row-circuit_asphalt.png";
+            const string barrierPath = "Assets/WrenchToRaceLegends/Art/Tracks/Textures/foundry-row-circuit_barrier_stripe.png";
+            var asphaltMat = PbrMaterialFactory.Create(asphaltPath);
+            var barrierMat = PbrMaterialFactory.Create(barrierPath);
 
             foreach (var renderer in instance.GetComponentsInChildren<Renderer>())
             {
                 var isBarrier = renderer.gameObject.name.Contains("barrier");
-                var tex = isBarrier ? barrierTex : asphaltTex;
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                if (tex != null) mat.mainTexture = tex;
-                mat.SetFloat("_Smoothness", isBarrier ? 0.5f : 0.3f);
-                renderer.sharedMaterial = mat;
+                renderer.sharedMaterial = isBarrier ? barrierMat : asphaltMat;
             }
         }
 

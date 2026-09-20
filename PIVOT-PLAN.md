@@ -996,3 +996,31 @@ lives in the linked file — this is a pointer, not a replacement.
   Rebuilt `VerticalSlice.unity` and all 6 track scenes against every
   new asset; 125/125 EditMode + 18/18 PlayMode tests still pass, 16
   assemblies / 85 C# files, no reference cycles (Claude).
+
+- 2026-09-20: The real PBR pass requested as a direct follow-up.
+  racinggame's texture generators refactored so each surface's color
+  painter shares its per-texel description with a new height-field-
+  based normal/AO derivation (real finite-difference slope, not hand-
+  painted) plus a hand-authored metallic-smoothness map correlated with
+  the same surface features (barrier bolt heads are the one genuinely
+  metallic/glossy surface in the scene). Caught a real bug before it
+  reached Unity: the metallic-smoothness textures were silently saved
+  as 24-bit RGB with the packed smoothness alpha channel discarded
+  (`bpy.data.images.new`'s `alpha=False` default) -- caught by checking
+  the real saved file format, fixed by passing `alpha=True`, and
+  reconfirmed as real 32-bit RGBA before copying into Unity.
+  New `PbrMaterialFactory.cs` wires `_BumpMap`/`_OcclusionMap`/
+  `_MetallicGlossMap` with the correct URP/Lit keywords wherever this
+  project builds a track/barrier/ground material (replacing bare
+  `mainTexture` assignments in both scene builders). New
+  `PbrTextureImportSettings.cs` forces the required Texture Type
+  (Normal Map) and linear color space (sRGB off) on every generated map
+  -- necessary for correct shader decoding, not cosmetic -- verified by
+  re-reading each texture's own `.meta` file after running it, not
+  assumed. Rebuilt `VerticalSlice.unity` and all 6 track scenes;
+  confirmed exactly 3 materials carry the `_NORMALMAP`/
+  `_METALLICSPECGLOSSMAP` keywords in the saved scene files (ground +
+  asphalt + barrier, matching the 3 targeted surfaces). 125/125
+  EditMode + 18/18 PlayMode tests pass, 16 assemblies / 87 C# files, no
+  reference cycles. Vehicle materials were explicitly out of scope this
+  pass -- ground-level generated surfaces only (Claude).

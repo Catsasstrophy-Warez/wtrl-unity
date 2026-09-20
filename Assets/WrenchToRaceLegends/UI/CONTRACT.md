@@ -519,3 +519,57 @@ of the actual visual improvement has been confirmed by a screenshot or
 human eyes -- only by mesh-import diagnostics, file resolution checks,
 and GUID-reference inspection, since no visual QA capability exists in
 this environment.
+
+## Real PBR materials: normal/AO/metallic-smoothness maps now wired (2026-09-20)
+
+Direct follow-up: the prior pass's own honest-limitation note said
+"still color-only procedural texturing, not a materials-authoring
+upgrade." This closes that gap for the 3 ground-level surfaces this
+project generates (track asphalt, track barriers, ground grass).
+racinggame's `generate_world_tracks.py`/`make_ground_texture.py` now
+also emit real `*_normal.png`/`*_ao.png`/`*_metallicsmoothness.png`
+maps per surface, derived from an actual height field (not hand-
+painted) -- see that repo's `REFERENCE-MODELING-ACCEPTANCE.md` for the
+full derivation writeup and a real bug it found (an alpha-channel
+default that silently discarded the packed smoothness data).
+
+New `Editor/PbrMaterialFactory.cs`: every material this project's
+scene builders create for these 3 surfaces now goes through
+`PbrMaterialFactory.Create(albedoPath)`, which looks up the
+`_normal`/`_ao`/`_metallicsmoothness` companion files by naming
+convention and wires `_BumpMap`/`_OcclusionMap`/`_MetallicGlossMap`
+with the correct URP/Lit keywords (`_NORMALMAP`,
+`_METALLICSPECGLOSSMAP`) and `_SmoothnessTextureChannel` setting
+(metallic-alpha, matching how the smoothness value is packed) --
+replacing the previous bare `mat.mainTexture = tex` calls in
+`VerticalSliceSceneBuilder.BuildTrackMesh`/`BuildGround` and
+`WorldTrackSceneBuilder.BuildTrackMesh`/`BuildFlatGround`. Any map that
+doesn't exist for a given texture is simply skipped, same "if (tex !=
+null)" convention as the rest of this codebase.
+
+New `Editor/PbrTextureImportSettings.cs`
+(`Assets/WTRL/Configure PBR Texture Import Settings`): a normal map
+imported with Unity's default Texture Type reads back wrong (Unity's
+shaders need the special "Normal Map" import mode to decode tangent-
+space normals correctly), and AO/metallic-smoothness maps are DATA,
+not color, and need `sRGBTexture=false` to avoid double gamma-
+correction -- this Editor script forces both, verified by re-reading
+each texture's own `.meta` file after running it (`textureType: 1`
+confirmed for normal maps, `sRGBTexture: 0` confirmed for both data
+map types), not assumed from the import call succeeding.
+
+Verified end-to-end: rebuilt `VerticalSlice.unity` and all 6 track
+scenes; the saved scene files reference exactly 3 materials with the
+`_NORMALMAP`/`_METALLICSPECGLOSSMAP` keywords (ground + asphalt +
+barrier, matching the 3 real surfaces this pass targeted) and the
+ground's real normal-map GUID is confirmed present. 125/125 EditMode +
+18/18 PlayMode tests pass, 16 assemblies / 87 C# files, no reference
+cycles.
+
+**Honest limitations, not fixed here**: still procedural/synthetic PBR
+data, not scanned or photogrammetry-sourced -- a real material author
+would likely tune these differently once actually seen. No
+displacement/parallax mapping. Vehicle materials (paint/glass/trim)
+were NOT given PBR maps this pass -- this was scoped to the 3
+ground-level generated surfaces only. As always, nothing here has been
+confirmed by an actual screenshot or human eyes.
