@@ -155,3 +155,52 @@ physics (finite/stable over a 3600-step run, deterministic replay
 across two independent sessions given identical inputs). 8 new EditMode
 tests cover `ContactDetector`/`TrackProgress`/`OvertakeTracker`.
 137/137 EditMode + 22/22 PlayMode tests pass.
+
+## Contact/win-detection wired into a live caller (2026-09-20)
+
+Closes the gap `ContactDetector.cs`'s own doc comment named as
+deliberately out of scope: "wiring these into a caller with both
+vehicles' live state each frame... real, separate follow-on work."
+
+Added `LapProgressTracker` and `OvertakeTracker.LastFlipFavoredA` here
+(same file, `ContactDetector.cs`): the former unwraps
+`TrackProgress.ArcLengthAt`'s per-lap value into a monotonically
+increasing total distance, the real, honestly-derivable substitute for
+"how many laps has this vehicle completed" for a vehicle with no
+`RaceFlowController` of its own (e.g. an AI rival) counting them; the
+latter exposes which side became ahead on a reported overtake, needed
+to distinguish "the player passed the rival" from "the rival passed
+the player."
+
+`AiVehicleController` (`WTRL.UI`) now exposes its real live
+`VehicleSimState` and rival id publicly, and `WTRL.UI
+.RaceSessionController` uses them: when a rival is assigned, every
+frame it feeds both vehicles' real positions into
+`ContactDetector`/`TrackProgress`/`OvertakeTracker`/
+`LapProgressTracker`, and on race completion enriches the outcome
+(`RaceCompletionBridge.EnrichOutcome`, new hook) with real `RivalId`/
+`PlayerWon` (derived from each vehicle's actual unwrapped total
+distance at race end -- not invented)/`CleanOvertakeOccurred`.
+`PlayerCausedContact`/`CausedRivalSpinOrRetire`/`OffTrackCutForAdvantage`
+stay unset even with a rival present -- this project still has no
+fault-attribution or off-track detection, only "contact occurred, no
+fault," so setting those specific fields would still be fabrication.
+
+Wired into the real vertical-slice scene: `VerticalSliceSceneBuilder`
+now assigns the real `MarshVehicle` `AiVehicleController` as
+`RaceSessionController.rival`, verified by tracing the actual fileID
+reference chain in the saved scene file (rival -> AiVehicleController
+component -> GameObject named "MarshVehicle").
+
+5 new PlayMode tests: 3 exercise the real enrichment method directly
+against known progress values (found necessary while writing them --
+the arcade lap-detection heuristic always finishes a lap near the
+start line, which fights a full-geometry simulation of "who's ahead"
+if not accounted for), 1 confirms contact/off-track fields never get
+fabricated even with a real win/overtake detected, 1 drives a full
+real race through the actual `Update` loop with a rival present and
+confirms `RivalMemory` updates. 5 new EditMode tests cover
+`LapProgressTracker`'s wrap-around unwrapping (including that a small
+backward drift is correctly NOT miscounted as a lap) and
+`OvertakeTracker.LastFlipFavoredA`. 142/142 EditMode + 28/28 PlayMode
+tests pass.

@@ -24,6 +24,21 @@ namespace WTRL.UI
 
         public enum DriverAggressionProfile { Cautious, Balanced, Aggressive }
 
+        /// <summary>The rival's real, live simulation state (position,
+        /// heading, speed) -- exposed so a scene-level caller (e.g.
+        /// `RaceSessionController`) can feed it into
+        /// `ContactDetector`/`TrackProgress` for real contact/overtake
+        /// detection against the player. Returns a default state before
+        /// `Awake` runs.</summary>
+        public VehicleSimState State => _session != null ? _session.State : VehicleSimState.Default();
+
+        /// <summary>The id used to identify this rival to Career-level
+        /// win/loss tracking (`RaceOutcomeDetail.RivalId`,
+        /// `RivalBehaviorRuntime.RecordResult`). Just the vehicle's own
+        /// content id -- this project has no separate "driver identity"
+        /// concept from "vehicle identity" yet.</summary>
+        public string RivalId => vehicle != null ? vehicle.id : null;
+
         private void Awake()
         {
             if (vehicle == null || vehicle.engine == null || vehicle.transmission == null ||

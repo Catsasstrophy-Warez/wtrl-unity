@@ -278,3 +278,25 @@ real vendor SDK, just the consent gate + in-memory log). No-ops
 entirely unless the player has opted in (default: opted out).
 Verified with a test that opts in, drives a real race to completion,
 and asserts the real event/parameters were recorded.
+
+## RaceCompletionBridge.EnrichOutcome: the real contact/win-detection hook (2026-09-20)
+
+Closes the previously-honest limitation this file (and
+`RaceCompletionBridge.cs`'s own doc comment) named: "`RivalId` is
+deliberately left null... setting it with `PlayerWon = false`
+unconditionally would incorrectly record a loss every time." That
+was true only because nothing could honestly determine `PlayerWon`
+yet. `WTRL.Racing.ContactDetector`/`TrackProgress`/`OvertakeTracker`/
+`LapProgressTracker` now exist, and `WTRL.UI.RaceSessionController`
+uses them to feed a real, per-frame-derived `RaceOutcomeDetail` into a
+new `RaceCompletionBridge.EnrichOutcome` hook (a
+`Func<RaceOutcomeDetail, RaceOutcomeDetail>`) before the outcome is
+applied. `WTRL.Career` still has zero dependency on scene-level
+vehicle-position code -- the hook is the seam, `RaceCompletionBridge`
+itself doesn't know or care how a caller derived the richer outcome.
+When no hook is set (no rival in the scene), behavior is exactly the
+previous honest default. Verified end-to-end: `VerticalSliceSceneBuilder`
+wires the real `MarshVehicle` as the rival, confirmed via the actual
+fileID reference chain in the saved scene file, not assumed from the
+Editor script's own logic alone. 142/142 EditMode + 28/28 PlayMode
+tests pass.

@@ -113,6 +113,14 @@ namespace WTRL.Racing
         private bool? _aWasAhead;
         private bool _contactSincePositionsMatched;
 
+        /// <summary>Which side became ahead on the most recent reported
+        /// overtake (true = A, false = B) -- added so a caller who cares
+        /// about direction (e.g. "did the PLAYER pass the rival," not
+        /// just "did an overtake happen") can tell the two cases apart.
+        /// Only meaningful immediately after <see cref="Update"/> returns
+        /// true; undefined otherwise.</summary>
+        public bool LastFlipFavoredA { get; private set; }
+
         /// <returns>True exactly on the frame a clean overtake completes
         /// (order flipped, no contact recorded since the order last
         /// flipped or since tracking started).</returns>
@@ -129,11 +137,54 @@ namespace WTRL.Racing
             if (_aWasAhead.HasValue && _aWasAhead.Value != aIsAheadNow)
             {
                 overtakeHappened = !_contactSincePositionsMatched;
+                if (overtakeHappened) LastFlipFavoredA = aIsAheadNow;
                 _contactSincePositionsMatched = false;
             }
 
             _aWasAhead = aIsAheadNow;
             return overtakeHappened;
+        }
+    }
+
+    /// <summary>Unwraps <see cref="TrackProgress.ArcLengthAt"/>'s per-lap
+    /// (0..trackLength) value into a monotonically increasing total
+    /// distance traveled -- the real, honestly-derivable substitute for
+    /// "how many laps has this vehicle actually completed" when the
+    /// vehicle itself (e.g. an AI rival with no `RaceFlowController` of
+    /// its own) never explicitly counts laps. Detects a lap wrap when
+    /// arc length drops by more than half the track length in one
+    /// update (crossing back from near the end to near the start),
+    /// exactly the same wraparound-unwrapping technique used for
+    /// continuous angle/odometer tracking generally.</summary>
+    public sealed class LapProgressTracker
+    {
+        private readonly double _trackLengthM;
+        private double? _previousArcLengthM;
+        private double _lapOffsetM;
+
+        public LapProgressTracker(double trackLengthM)
+        {
+            _trackLengthM = trackLengthM;
+        }
+
+        /// <summary>Total distance traveled along the track since this
+        /// tracker was created, unwrapped across lap boundaries.</summary>
+        public double TotalDistanceM { get; private set; }
+
+        /// <summary>Real (not estimated-by-time) completed-lap count,
+        /// derived from total unwrapped distance divided by track
+        /// length.</summary>
+        public int CompletedLaps => (int)(TotalDistanceM / _trackLengthM);
+
+        public void Update(double currentArcLengthM)
+        {
+            if (_previousArcLengthM.HasValue && currentArcLengthM < _previousArcLengthM.Value - _trackLengthM / 2)
+            {
+                _lapOffsetM += _trackLengthM;
+            }
+
+            _previousArcLengthM = currentArcLengthM;
+            TotalDistanceM = _lapOffsetM + currentArcLengthM;
         }
     }
 }

@@ -177,5 +177,199 @@ namespace WTRL.Tests
                 "a lap must still complete even with a misconfigured radius pair, not hang forever");
             Object.DestroyImmediate(go);
         }
+
+        // ---- Real contact/win detection wired into a live caller ----
+        // These build a real AiVehicleController (bypassing its Awake(),
+        // which needs a fully-configured ScriptableObject asset this
+        // test doesn't need) and drive its underlying AiVehicleSession's
+        // real, public State field directly -- the same "set position
+        // directly, no physics stepping needed to prove the detection
+        // logic" approach the rest of this file already uses for the
+        // player's Transform.
+
+        private static WTRL.UI.AiVehicleController MakeRival(string rivalId)
+        {
+            // Created inactive so AddComponent doesn't run Awake() yet
+            // (Awake would otherwise fire immediately with `vehicle`
+            // still null, log a real error, and disable the component
+            // before this helper gets a chance to set it) -- Awake
+            // still never needs to run for this test's purposes since
+            // `_session` is set directly afterward anyway.
+            var go = new GameObject("Rival");
+            go.SetActive(false);
+            var ai = go.AddComponent<WTRL.UI.AiVehicleController>();
+
+            var vehicleAsset = ScriptableObject.CreateInstance<WTRL.Content.VehicleDefinitionAsset>();
+            vehicleAsset.id = rivalId;
+            typeof(WTRL.UI.AiVehicleController).GetField("vehicle")
+                .SetValue(ai, vehicleAsset);
+
+            var vehicleDef = new WTRL.Vehicle.VehicleDefinition(rivalId, "test-gen", "Test Rival", massKg: 1400,
+                wheelbaseM: 2.5, engineId: "test-engine", transmissionId: "test-gearbox", suspensionId: "test-suspension");
+            var engineDef = new WTRL.Vehicle.EngineDefinition("test-engine", "Test Engine", displacementLiters: 3.0,
+                peakPowerHp: 250, peakTorqueLbFt: 220);
+            var transmissionDef = new WTRL.Vehicle.TransmissionDefinition("test-gearbox", "Test 5-Speed",
+                new[] { 3.2, 2.1, 1.5, 1.1, 0.9 }, finalDrive: 4.0);
+            var suspensionDef = new WTRL.Vehicle.SuspensionDefinition("test-suspension", "Test Suspension",
+                "double-wishbone", "double-wishbone");
+            var tireDef = new WTRL.Vehicle.TireDefinition("test-tire", "Test Tire", longitudinalStiffness: 9.0,
+                corneringStiffness: 6.0, peakSlipRatio: 0.11, peakSlipAngleRadians: 0.10);
+
+            var session = new WTRL.Racing.AiVehicleSession(new WTRL.Racing.DriverModel
+            {
+                Aggression = 0.5, Consistency = 0.8, BrakingConfidence = 0.7, ThrottleDiscipline = 0.8,
+                WetSkill = 0.6, TireConservation = 0.6, MechanicalSympathy = 0.6, MistakeProbability = 0,
+            }, WTRL.Racing.SampleContent.FoundryRowCircuitLine(), vehicleDef, engineDef, transmissionDef, tireDef, suspensionDef);
+
+            typeof(WTRL.UI.AiVehicleController).GetField("_session",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(ai, session);
+
+            return ai;
+        }
+
+        private static void SetRivalPosition(WTRL.UI.AiVehicleController rival, double x, double z)
+        {
+            var session = (WTRL.Racing.AiVehicleSession)typeof(WTRL.UI.AiVehicleController).GetField("_session",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .GetValue(rival);
+            var state = session.State;
+            state.X = x;
+            state.Z = z;
+            session.State = state;
+        }
+
+        private static (GameObject go, RaceSessionController controller, Transform vehicle, WTRL.UI.AiVehicleController rival, CareerStateHolder career)
+            MakeSessionWithRival(int laps)
+        {
+            var (go, controller, vehicle, _, career) = MakeSession(laps);
+            var rival = MakeRival("test-rival");
+
+            typeof(RaceSessionController).GetField("rival",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(controller, rival);
+
+            // Re-run Start() now that `rival` is assigned, so the
+            // rival-aware branch (EnrichOutcome, progress trackers) is
+            // actually initialized -- MakeSession() already ran Start()
+            // once without a rival.
+            typeof(RaceSessionController).GetMethod("Start",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(controller, null);
+
+            return (go, controller, vehicle, rival, career);
+        }
+
+        // The 3 tests below exercise the real, private
+        // `EnrichOutcomeWithContactDetection` method directly via
+        // reflection, injecting known `LapProgressTracker`/overtake
+        // state rather than choreographing exact vehicle movement
+        // through the full Update() loop. Found necessary while writing
+        // this: the arcade lap-detection heuristic (return-to-start-
+        // radius) means a completed lap always ends with the player
+        // physically near the start line -- i.e. near-zero current
+        // track arc length -- which made a full-geometry simulation of
+        // "player finishes farther ahead" fight the very heuristic
+        // that's supposed to detect the lap in the first place. Testing
+        // the enrichment method's real logic directly against known
+        // inputs is more robust AND more precisely targeted at the
+        // actual new code, not an artifact of unrelated lap-detection
+        // geometry.
+
+        private static WTRL.Racing.LapProgressTracker MakeProgressAt(double totalDistanceM)
+        {
+            var tracker = new WTRL.Racing.LapProgressTracker(trackLengthM: 1_000_000); // large enough that this single value never wraps
+            tracker.Update(totalDistanceM);
+            return tracker;
+        }
+
+        private static RaceOutcomeDetail InvokeEnrich(RaceSessionController controller, WTRL.Racing.LapProgressTracker playerProgress,
+            WTRL.Racing.LapProgressTracker rivalProgress, bool cleanOvertakeOccurred)
+        {
+            var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            typeof(RaceSessionController).GetField("_playerProgress", flags).SetValue(controller, playerProgress);
+            typeof(RaceSessionController).GetField("_rivalProgress", flags).SetValue(controller, rivalProgress);
+            typeof(RaceSessionController).GetField("_playerMadeACleanOvertake", flags).SetValue(controller, cleanOvertakeOccurred);
+
+            var baseOutcome = new RaceOutcomeDetail("test-race", 42.0, RaceFormat.Circuit);
+            var method = typeof(RaceSessionController).GetMethod("EnrichOutcomeWithContactDetection", flags);
+            return (RaceOutcomeDetail)method.Invoke(controller, new object[] { baseOutcome });
+        }
+
+        [Test]
+        public void PlayerAheadInRealTrackProgressIsEnrichedAsAWin()
+        {
+            var (go, controller, _, _, _) = MakeSessionWithRival(laps: 1);
+
+            var outcome = InvokeEnrich(controller, MakeProgressAt(500), MakeProgressAt(200), cleanOvertakeOccurred: false);
+
+            Assert.That(outcome.RivalId, Is.EqualTo("test-rival"));
+            Assert.That(outcome.PlayerWon, Is.True);
+            Object.DestroyImmediate(go);
+        }
+
+        [Test]
+        public void PlayerBehindInRealTrackProgressIsEnrichedAsALoss()
+        {
+            var (go, controller, _, _, _) = MakeSessionWithRival(laps: 1);
+
+            var outcome = InvokeEnrich(controller, MakeProgressAt(100), MakeProgressAt(400), cleanOvertakeOccurred: false);
+
+            Assert.That(outcome.RivalId, Is.EqualTo("test-rival"));
+            Assert.That(outcome.PlayerWon, Is.False);
+            Object.DestroyImmediate(go);
+        }
+
+        [Test]
+        public void CleanOvertakeFlagFlowsThroughToTheEnrichedOutcome()
+        {
+            var (go, controller, _, _, _) = MakeSessionWithRival(laps: 1);
+
+            var outcome = InvokeEnrich(controller, MakeProgressAt(100), MakeProgressAt(400), cleanOvertakeOccurred: true);
+
+            Assert.That(outcome.CleanOvertakeOccurred, Is.True);
+            Object.DestroyImmediate(go);
+        }
+
+        [Test]
+        public void EnrichedOutcomeNeverFabricatesContactOrOffTrackFields()
+        {
+            // This project has no fault-attribution or off-track
+            // detection -- only "contact occurred" with no fault. Even
+            // with a rival present and a win/overtake detected, these
+            // specific fields must stay false; setting them would be
+            // fabrication this project's discipline exists to prevent.
+            var (go, controller, _, _, _) = MakeSessionWithRival(laps: 1);
+
+            var outcome = InvokeEnrich(controller, MakeProgressAt(500), MakeProgressAt(200), cleanOvertakeOccurred: true);
+
+            Assert.That(outcome.PlayerCausedContact, Is.False);
+            Assert.That(outcome.CausedRivalSpinOrRetire, Is.False);
+            Assert.That(outcome.OffTrackCutForAdvantage, Is.False);
+            Object.DestroyImmediate(go);
+        }
+
+        [Test]
+        public void RealRaceCompletionWithARivalPresentActuallyUpdatesRivalMemory()
+        {
+            // End-to-end sanity check (not the geometry-precise scenario
+            // above): drives a real race through RaceSessionController's
+            // actual Update loop with a rival present, and confirms
+            // SOME real RivalMemory/reputation effect occurs on
+            // Complete() -- proving the wiring (EnrichOutcome actually
+            // getting called with a real rival attached) works, without
+            // depending on exact arc-length arithmetic.
+            var (go, controller, vehicle, rival, career) = MakeSessionWithRival(laps: 1);
+            SetRivalPosition(rival, 300, 0); // give the rival *some* real, nonzero track progress throughout
+            SimulateUpdate(controller, 0.1f);
+
+            DriveOneLap(vehicle, controller);
+            SimulateUpdate(controller, 0.1f);
+            controller.Controller.Complete();
+
+            var memory = career.State.RivalBehavior.Memory("test-rival");
+            Assert.That(memory.Encounters, Is.EqualTo(1), "a real rival result should have been recorded exactly once");
+            Object.DestroyImmediate(go);
+        }
     }
 }

@@ -126,6 +126,13 @@ namespace WTRL.EditorTools
                 var startNode = SampleContent.FoundryRowCircuitLine().Nodes[2]; // stagger the start position
                 rivalGo.transform.position = new Vector3((float)startNode.X, 0.35f, (float)startNode.Z);
                 AttachVehicleModel(rivalGo, MarshModelPath, new Color(0.85f, 0.85f, 0.9f, 1f)); // silver paint
+
+                // Real contact/win-detection wiring: RaceSessionController
+                // was created earlier with no rival assigned (the Marsh
+                // asset wasn't loaded yet at that point in this method,
+                // same asset-unload timing concern as marshAsset itself
+                // above) -- assign it now that the rival actually exists.
+                SetPrivateField(raceSession, "rival", rivalController);
             }
             else
             {

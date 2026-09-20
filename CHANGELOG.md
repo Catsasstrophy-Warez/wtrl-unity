@@ -881,3 +881,43 @@ exactly the work this documentation exists to save.
   bug's code, re-ran the actual test suite, re-checked the actual
   citation source files. 137/137 EditMode + 23/23 PlayMode tests pass,
   16 assemblies / 92 C# files, no reference cycles (Claude).
+
+- 2026-09-20: Wired the #1 item on PROJECT-STATUS.md's own "what would
+  most change the picture next" list: contact/win-detection into a
+  live per-frame caller. Added `LapProgressTracker` (unwraps per-lap
+  arc length into total distance -- the honest substitute for "laps
+  completed" for a vehicle with no `RaceFlowController` of its own) and
+  `OvertakeTracker.LastFlipFavoredA` (which side became ahead) to
+  `Racing/ContactDetector.cs`. `AiVehicleController` now exposes its
+  real live `VehicleSimState`/rival id. New
+  `RaceCompletionBridge.EnrichOutcome` hook lets `WTRL.UI
+  .RaceSessionController` (which now optionally takes a `rival`
+  reference) feed a real, per-frame-derived outcome -- `RivalId`/
+  `PlayerWon` (from each vehicle's actual unwrapped total distance at
+  race end)/`CleanOvertakeOccurred` -- into `CareerTransaction`, while
+  `WTRL.Career` still has zero dependency on scene-level vehicle-
+  position code. Fault-attribution fields
+  (`PlayerCausedContact`/`CausedRivalSpinOrRetire`/
+  `OffTrackCutForAdvantage`) stay unset even with a rival present --
+  still no such detection exists, and setting them would be
+  fabrication. Wired the real `MarshVehicle` as the rival in
+  `VerticalSliceSceneBuilder`, verified via the actual fileID reference
+  chain in the saved scene file (not assumed from the Editor script's
+  logic alone).
+  Found and fixed one real test-design flaw while writing this: an
+  initial attempt to verify "player finishes farther ahead" via full
+  vehicle-movement simulation fought the arcade lap-detection
+  heuristic itself (a completed lap always ends near the start line,
+  i.e. near-zero current track progress) -- switched to testing the
+  real enrichment method directly against known progress values
+  instead, which is both more robust and more precisely targeted at
+  the actual new code. Also found and fixed a real test-setup bug (not
+  a production bug): constructing a test rival via `AddComponent`
+  triggered `Awake()` immediately with `vehicle` still unassigned,
+  logging a real error before the test could configure it -- fixed by
+  constructing the GameObject inactive first so `Awake` defers.
+  10 new tests (5 EditMode covering `LapProgressTracker`/
+  `OvertakeTracker.LastFlipFavoredA`, 5 PlayMode covering the real
+  enrichment logic and a full live-race integration check). 142/142
+  EditMode + 28/28 PlayMode tests pass, 16 assemblies / 92 C# files, no
+  reference cycles (Claude).

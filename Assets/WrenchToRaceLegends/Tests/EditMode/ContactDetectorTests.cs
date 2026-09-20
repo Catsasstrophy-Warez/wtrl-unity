@@ -125,5 +125,75 @@ namespace WTRL.Tests
             var secondOvertake = tracker.Update(progressA: 20, progressB: 15, contactThisFrame: false);
             Assert.That(secondOvertake, Is.True);
         }
+
+        [Test]
+        public void OvertakeTrackerReportsWhichSideBecameAheadOnAFlip()
+        {
+            var tracker = new OvertakeTracker();
+            tracker.Update(progressA: 10, progressB: 5, contactThisFrame: false); // A ahead
+            tracker.Update(progressA: 10, progressB: 15, contactThisFrame: false); // B overtakes A
+
+            Assert.That(tracker.LastFlipFavoredA, Is.False, "B became ahead, not A");
+
+            tracker.Update(progressA: 20, progressB: 15, contactThisFrame: false); // A overtakes back
+            Assert.That(tracker.LastFlipFavoredA, Is.True, "A became ahead this time");
+        }
+
+        // ---- LapProgressTracker: real unwrapping of per-lap arc length
+        // into total distance traveled, the honest substitute for "how
+        // many laps has this vehicle completed" for a vehicle with no
+        // RaceFlowController of its own counting them. ----
+
+        [Test]
+        public void LapProgressTrackerAccumulatesWithinASingleLap()
+        {
+            var tracker = new LapProgressTracker(trackLengthM: 600);
+            tracker.Update(50);
+            tracker.Update(150);
+            tracker.Update(300);
+
+            Assert.That(tracker.TotalDistanceM, Is.EqualTo(300).Within(0.001));
+            Assert.That(tracker.CompletedLaps, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void LapProgressTrackerUnwrapsAcrossALapBoundary()
+        {
+            var tracker = new LapProgressTracker(trackLengthM: 600);
+            tracker.Update(580); // near the end of lap 1
+            tracker.Update(20); // wrapped back near the start -- a real completed lap, not backward driving
+
+            Assert.That(tracker.TotalDistanceM, Is.EqualTo(620).Within(0.001));
+            Assert.That(tracker.CompletedLaps, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void LapProgressTrackerCountsMultipleCompletedLaps()
+        {
+            var tracker = new LapProgressTracker(trackLengthM: 600);
+            for (var lap = 0; lap < 3; lap++)
+            {
+                tracker.Update(580);
+                tracker.Update(20);
+            }
+            tracker.Update(300); // partway into lap 4
+
+            Assert.That(tracker.CompletedLaps, Is.EqualTo(3));
+            Assert.That(tracker.TotalDistanceM, Is.EqualTo(3 * 600 + 300).Within(0.001));
+        }
+
+        [Test]
+        public void LapProgressTrackerDoesNotMiscountASmallBackwardDriftAsALap()
+        {
+            // A vehicle briefly reversing or drifting backward slightly
+            // (a few meters) must not register as a lap wrap -- only a
+            // jump of more than half the track length counts as one.
+            var tracker = new LapProgressTracker(trackLengthM: 600);
+            tracker.Update(300);
+            tracker.Update(290); // drifted back 10m, not a lap wrap
+
+            Assert.That(tracker.TotalDistanceM, Is.EqualTo(290).Within(0.001));
+            Assert.That(tracker.CompletedLaps, Is.EqualTo(0));
+        }
     }
 }

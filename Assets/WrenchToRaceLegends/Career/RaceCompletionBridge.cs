@@ -15,22 +15,23 @@ namespace WTRL.Career
     /// <see cref="RaceFlowController.Completed"/> now fires on race
     /// completion; this type subscribes to it and applies the outcome.
     ///
-    /// HONEST LIMITATION, not fixed here: this project has no contact
-    /// detection, no rival-position comparison, and no win/loss
-    /// determination anywhere in the simulation yet -- `RaceRuntimeState`
-    /// tracks lap/sector/penalty timing only. So this bridge can only
-    /// honestly populate `RaceId`/`ClassifiedTimeSeconds`/`Format` from
-    /// real data; every contact/rival/win field is left at its safe
-    /// default (false/null). Concretely, that means: `RivalId` is
-    /// deliberately left null even for races with a named rival in
-    /// `RaceDefinition.RivalIds` -- setting it with `PlayerWon = false`
-    /// would incorrectly record a LOSS against that rival on every single
-    /// completion, which is worse than not recording anything. The one
-    /// real effect every completion gets is `SafetyEvent
-    /// .EventCompletedZeroIncidents` (accurate: no incident of any kind
-    /// is or can be detected yet) plus best-classified-time tracking.
-    /// Reputation/rival-memory effects stay dormant until a real contact/
-    /// win-detection system exists to feed this honestly.
+    /// UPDATE (2026-09-20): contact/overtake detection now exists
+    /// (`WTRL.Racing.ContactDetector`/`TrackProgress`/`OvertakeTracker`/
+    /// `LapProgressTracker`), so this bridge can be given real
+    /// contact/rival/win data -- but `WTRL.Career` still has no
+    /// dependency on `WTRL.Racing`'s scene-level wiring (a caller that
+    /// owns both vehicles' live position each frame, e.g.
+    /// `WTRL.UI.RaceSessionController`), so this bridge doesn't compute
+    /// any of that itself. Instead, <see cref="EnrichOutcome"/> is an
+    /// optional hook: if set, it's called with the honestly-populated
+    /// base outcome (RaceId/ClassifiedTimeSeconds/Format) and may return
+    /// a richer one (with RivalId/PlayerWon/CleanOvertakeOccurred/etc.
+    /// filled in from real per-frame detection). If unset, behavior is
+    /// exactly the previous honest-default one: `RivalId` stays null
+    /// (setting it with an unknown `PlayerWon` would incorrectly record
+    /// a loss on every completion, worse than not recording anything),
+    /// and every completion still gets `SafetyEvent
+    /// .EventCompletedZeroIncidents` plus best-classified-time tracking.
     /// </summary>
     public sealed class RaceCompletionBridge
     {
@@ -40,6 +41,14 @@ namespace WTRL.Career
         {
             _careerState = careerState;
         }
+
+        /// <summary>Optional. Called with the base, honestly-derivable
+        /// outcome (RaceId/ClassifiedTimeSeconds/Format only) before it's
+        /// applied; may return a richer <see cref="RaceOutcomeDetail"/>
+        /// with real contact/rival/win data. Left null by default -- see
+        /// this type's own doc comment for why that's the safe default,
+        /// not merely "not implemented."</summary>
+        public System.Func<RaceOutcomeDetail, RaceOutcomeDetail>? EnrichOutcome { get; set; }
 
         public void AttachTo(RaceFlowController controller)
         {
@@ -57,6 +66,11 @@ namespace WTRL.Career
                 raceId: definition.Id,
                 classifiedTimeSeconds: state.ClassifiedTime,
                 format: definition.Format);
+
+            if (EnrichOutcome != null)
+            {
+                outcome = EnrichOutcome(outcome);
+            }
 
             CareerTransaction.Apply(new[] { CareerCommand.RecordRaceOutcome(outcome) }, _careerState);
 
