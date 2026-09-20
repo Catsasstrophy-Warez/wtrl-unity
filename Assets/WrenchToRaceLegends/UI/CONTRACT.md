@@ -331,3 +331,57 @@ expected).
 Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass, and
 `Scripts/validate_structure.sh` still reports 16 assemblies, 70 C#
 files, no reference cycles.
+
+## Real terrain height variation (2026-09-20)
+
+Closes the ground-flatness gap named directly by the user after the
+previous pass ("no terrain system exists" was called out as a known
+limitation, not fixed at the time).
+
+`BuildGround` no longer creates a `PrimitiveType.Plane` (which has
+zero height variation by construction, no matter what texture is on
+it). It now builds a real 120x120-quad mesh (14,641 vertices) with
+per-vertex height from a two-octave `Mathf.PerlinNoise` field
+(±6m amplitude), via a new `BuildTerrainMesh()` helper.
+
+**A real placement bug was caught and fixed before ever running this
+in Unity**, by re-checking the actual waypoint data instead of
+assuming the track sat near the world origin: an initial draft
+faded the terrain height to zero via a radial falloff from `(0,0,0)`
+with only a 45m flat radius. But `Racing.SampleContent
+.FoundryRowCircuitLine()`'s real waypoints span x:[-20,220],
+z:[0,100] -- bounding-box center (100,50), far from the origin -- so
+that draft would have left most of the actual track sitting on
+sloped, noisy terrain while the flat track mesh itself stayed at a
+fixed height, a visible seam/clipping bug. Fixed by switching to a
+rectangular flat zone (`FlatZoneMin`=(-60,-40), `FlatZoneMax`=
+(260,140) -- the real track bbox plus 40m margin, also covering both
+facility markers) with a 25m smoothstep feather, and by centering the
+terrain mesh itself on the track's real bounding-box center (100,50)
+instead of the origin, at a large enough half-size (300m) to still
+extend well past the flat zone in every direction.
+
+**A second bug was caught the same way (by inspecting the saved
+scene file, not by looking at it)**: the `MeshCollider` added to the
+Ground GameObject was never actually given the generated mesh --
+`ground.AddComponent<MeshCollider>()`'s return value was discarded
+instead of having `.sharedMesh` set, so the ground would have had a
+visible terrain mesh but zero collision surface. Fixed by capturing
+the component and assigning `meshCollider.sharedMesh = mesh`.
+
+Verified: the rebuilt scene's console log reports a real height range
+(`[-5.15, 4.45] m`) rather than a flat 0, confirming actual
+displacement happened; the flat zone bounds are logged and checked
+by hand against the real track waypoint range; and the saved scene
+file was inspected directly for both the `MeshFilter` and
+`MeshCollider` components on `Ground`, confirming both reference the
+same embedded `TerrainMesh` object (a real Mesh asset serialized
+inline into the `.unity` file, 14,641 vertices / 86,400 indices,
+matching the 120x120 grid) rather than one of them being left null.
+As always, none of this has been confirmed by an actual screenshot or
+human eyes in an interactive Editor session -- that capability does
+not exist here.
+
+Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass, and
+`Scripts/validate_structure.sh` still reports 16 assemblies, 70 C#
+files, no reference cycles.

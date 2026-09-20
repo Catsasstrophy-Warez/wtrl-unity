@@ -809,3 +809,28 @@ lives in the linked file — this is a pointer, not a replacement.
   Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass.
   Structural validator: 16 assemblies, 70 C# files, no reference
   cycles (Claude).
+
+- 2026-09-20: Fixed the ground-flatness gap the user pointed at
+  directly after the previous pass. `BuildGround` now builds a real
+  120x120-quad terrain mesh (14,641 vertices) with Perlin-noise height
+  displacement (+-6m) instead of a `PrimitiveType.Plane`. **Caught a
+  real placement bug before running it**: an initial draft flattened
+  terrain height within only a 45m radius of the world origin, but
+  `Racing.SampleContent.FoundryRowCircuitLine()`'s real waypoints span
+  x:[-20,220] z:[0,100] -- centered nowhere near the origin -- which
+  would have left most of the actual track sitting on sloped terrain.
+  Fixed by using a rectangular flat zone sized to the real track
+  bounding box (plus margin, also covering both facility markers) and
+  centering the terrain mesh on the track's real center instead of the
+  origin. **Caught a second real bug** the same way (scene-file
+  inspection, not visual): the new `MeshCollider` was added but never
+  given the generated mesh, so the ground would have had a visible
+  surface with zero collision. Fixed by assigning
+  `meshCollider.sharedMesh` directly. Verified via the rebuilt scene's
+  logged height range (real displacement, not a flat 0), by checking
+  the flat-zone bounds against the actual waypoint coordinates by
+  hand, and by confirming both `MeshFilter` and `MeshCollider` on the
+  `Ground` object reference the same embedded `TerrainMesh` in the
+  saved scene file. Re-confirmed 104/104 EditMode + 4/4 PlayMode tests
+  still pass. Structural validator: 16 assemblies, 70 C# files, no
+  reference cycles (Claude).

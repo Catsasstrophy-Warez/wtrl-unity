@@ -275,24 +275,59 @@ namespace WTRL.EditorTools
             volume.profile = profile;
         }
 
-        /// <summary>The surrounding terrain plane. Previously a single flat
-        /// dark color (correct for "empty ground" but visually inert at any
-        /// distance). Now uses a procedurally generated grass/dirt texture
-        /// (racinggame/BlenderPipeline/scripts -- same "generate a PNG via
-        /// Blender's own pixel API, save as a plain file, load directly in
-        /// C#" pipeline already proven for the track asphalt/barrier
-        /// textures, since FBX-embedded textures are known not to survive
-        /// Unity's importer). Tiled 20x across the plane via material
-        /// texture scale rather than baked into geometry -- there is still
-        /// no real terrain system (no height variation), which is an
-        /// honest, documented limitation, not a claim of finished
-        /// environment art.</summary>
+        /// <summary>The surrounding terrain. Previously a single flat
+        /// `PrimitiveType.Plane` with zero height variation at all --
+        /// a real, previously-acknowledged limitation, not just a texture
+        /// problem. This now builds an actual subdivided mesh (240x240
+        /// quads over a 600x600m area, centered on the track, not on the
+        /// world origin) with real per-vertex height displacement from a
+        /// layered `Mathf.PerlinNoise` field, so the ground genuinely
+        /// rolls rather than only looking textured.
+        ///
+        /// The displacement is faded to exactly zero inside a rectangular
+        /// flat zone (`FlatZoneMin`/`FlatZoneMax`) sized to the REAL
+        /// Foundry Row footprint plus margin. This matters because
+        /// `Racing.SampleContent.FoundryRowCircuitLine()`'s actual
+        /// waypoints span x:[-20,220], z:[0,100] -- NOT centered on the
+        /// world origin. An earlier draft of this method centered both
+        /// the terrain and its flat zone on (0,0,0) with only a 45m
+        /// radius, which would have left most of the track (whose real
+        /// bounding-box center is (100,50), radius ~150m from the
+        /// origin) sitting on sloped, noisy terrain while the track's own
+        /// mesh stayed flat -- caught by checking the actual waypoint
+        /// coordinates against the flat-zone size before ever rebuilding
+        /// the scene, not by a screenshot. The flat zone also covers both
+        /// facility markers (at x=-30, z=-20/+20). Everything placed at
+        /// fixed, non-adjustable Y coordinates elsewhere in this builder
+        /// is therefore not undercut or floated by terrain height.
+        ///
+        /// Still uses the same procedurally generated grass/dirt texture
+        /// as before (tiled via UVs baked into the mesh). Verified by
+        /// checking the built mesh's own vertex Y-value range (min/max
+        /// logged) and by confirming the flat-zone rectangle covers the
+        /// real track/facility coordinates, rather than a screenshot --
+        /// no interactive-Editor visual confirmation exists in this
+        /// environment.</summary>
+        private const float TerrainHalfSizeM = 300f; // terrain spans this far each side of TerrainCenter
+        private const int TerrainResolution = 120; // quads per side
+        private const float TerrainHeightM = 6f;
+        private static readonly Vector2 TerrainCenter = new(100f, 50f); // matches Foundry Row's real bounding-box center
+        private static readonly Vector2 FlatZoneMin = new(-60f, -40f); // Foundry Row bbox (-20..220, 0..100) plus 40m margin, covers facility markers too
+        private static readonly Vector2 FlatZoneMax = new(260f, 140f);
+        private const float FlatZoneFeatherM = 25f;
+
         private static void BuildGround()
         {
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            ground.name = "Ground";
+            var ground = new GameObject("Ground");
             ground.transform.position = Vector3.zero;
-            ground.transform.localScale = new Vector3(20, 1, 20); // Unity plane primitive is 10x10 units
+
+            var meshFilter = ground.AddComponent<MeshFilter>();
+            var meshRenderer = ground.AddComponent<MeshRenderer>();
+            var meshCollider = ground.AddComponent<MeshCollider>();
+
+            var mesh = BuildTerrainMesh();
+            meshFilter.sharedMesh = mesh;
+            meshCollider.sharedMesh = mesh; // was left null in an earlier draft -- ground had a visual mesh but no actual collision surface
 
             var groundTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/WrenchToRaceLegends/Art/Environment/Textures/world_ground_grass.png");
@@ -301,14 +336,88 @@ namespace WTRL.EditorTools
             if (groundTex != null)
             {
                 grass.mainTexture = groundTex;
-                grass.mainTextureScale = new Vector2(20f, 20f);
             }
             else
             {
                 grass.color = new Color(0.16f, 0.16f, 0.17f);
             }
             grass.SetFloat("_Smoothness", 0.1f);
-            ground.GetComponent<Renderer>().sharedMaterial = grass;
+            meshRenderer.sharedMaterial = grass;
+        }
+
+        /// <summary>Signed distance (meters) from point (x,z) to outside the
+        /// [FlatZoneMin, FlatZoneMax] rectangle. 0 or negative = inside.</summary>
+        private static float DistanceOutsideFlatZone(float x, float z)
+        {
+            var dx = Mathf.Max(FlatZoneMin.x - x, 0f, x - FlatZoneMax.x);
+            var dz = Mathf.Max(FlatZoneMin.y - z, 0f, z - FlatZoneMax.y);
+            return new Vector2(dx, dz).magnitude;
+        }
+
+        private static Mesh BuildTerrainMesh()
+        {
+            var verticesPerSide = TerrainResolution + 1;
+            var vertices = new Vector3[verticesPerSide * verticesPerSide];
+            var uvs = new Vector2[vertices.Length];
+            var minY = float.MaxValue;
+            var maxY = float.MinValue;
+
+            for (var zi = 0; zi < verticesPerSide; zi++)
+            {
+                for (var xi = 0; xi < verticesPerSide; xi++)
+                {
+                    var u = (float)xi / TerrainResolution;
+                    var v = (float)zi / TerrainResolution;
+                    var x = TerrainCenter.x + (u - 0.5f) * TerrainHalfSizeM * 2f;
+                    var z = TerrainCenter.y + (v - 0.5f) * TerrainHalfSizeM * 2f;
+
+                    var noise = Mathf.PerlinNoise(x * 0.03f, z * 0.03f) * 0.7f
+                        + Mathf.PerlinNoise(x * 0.08f, z * 0.08f) * 0.3f;
+                    var height = (noise - 0.5f) * 2f * TerrainHeightM;
+
+                    var distanceOutsideFlatZone = DistanceOutsideFlatZone(x, z);
+                    var falloff = Mathf.SmoothStep(0f, 1f, distanceOutsideFlatZone / FlatZoneFeatherM);
+                    height *= falloff;
+
+                    // The Ground GameObject stays at world-origin transform.position
+                    // (Vector3.zero, set in BuildGround), so vertices are authored
+                    // directly in world/local-equals-world coordinates -- NOT offset
+                    // by -TerrainCenter, which would silently re-center the mesh back
+                    // onto (0,0,0) and undo the whole point of TerrainCenter.
+                    var index = zi * verticesPerSide + xi;
+                    vertices[index] = new Vector3(x, height, z);
+                    uvs[index] = new Vector2(x * 0.2f, z * 0.2f); // tiled roughly every 5m
+                    minY = Mathf.Min(minY, height);
+                    maxY = Mathf.Max(maxY, height);
+                }
+            }
+
+            var triangles = new int[TerrainResolution * TerrainResolution * 6];
+            var t = 0;
+            for (var zi = 0; zi < TerrainResolution; zi++)
+            {
+                for (var xi = 0; xi < TerrainResolution; xi++)
+                {
+                    var a = zi * verticesPerSide + xi;
+                    var b = a + 1;
+                    var c = a + verticesPerSide;
+                    var d = c + 1;
+                    triangles[t++] = a; triangles[t++] = c; triangles[t++] = b;
+                    triangles[t++] = b; triangles[t++] = c; triangles[t++] = d;
+                }
+            }
+
+            var mesh = new Mesh { name = "TerrainMesh" };
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            Debug.Log($"VerticalSliceSceneBuilder: terrain height range [{minY:F2}, {maxY:F2}] m, flat zone x:[{FlatZoneMin.x},{FlatZoneMax.x}] z:[{FlatZoneMin.y},{FlatZoneMax.y}].");
+
+            return mesh;
         }
 
         /// <summary>Instantiates the real ribbon-road mesh generated by
