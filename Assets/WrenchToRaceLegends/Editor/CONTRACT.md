@@ -120,3 +120,30 @@ out to genuinely need almost none of what its asmdef claimed.
 
 137/137 EditMode + 22/22 PlayMode tests pass throughout, 16 assemblies
 / 92 C# files, no reference cycles.
+
+## Third vehicle content builder: hero-mid70s (2026-09-20)
+
+Closes one entry of "6 of 7 hero generations referenced by
+`Garage.CanonicalBuildRecipes` have no real `VehicleDefinitionAsset`"
+from the content-completeness audit. `HeroMid70sContentBuilder`
+follows the exact `HeroContentBuilder`/`MarshContentBuilder` pattern,
+with one difference worth naming: its mass (1580kg) and peak power
+(140hp) are the REAL, already-cited figures from
+`CanonicalBuildRecipes.cs`'s own mid-70s comment -- not new placeholder
+fixture values like `HeroContentBuilder`'s hero-1965 numbers. Reused
+rather than re-cited, to avoid a second, possibly-inconsistent
+citation of the same fact. Everything else (wheelbase, transmission
+ratios, suspension layout, tire stiffness) is an explicitly-flagged,
+period-plausible placeholder, same discipline as every prior builder.
+
+New test confirms `hero75-full-compression` (one of the 5 real
+`hero75-*` recipes) is now satisfiable end-to-end against this real
+vehicle -- 1580kg / 140hp = 11.29 kg/hp, landing exactly at the top of
+the recipe's real 11.0-11.29 band -- and correctly fails with an open
+differential (confirms the check is real, not vacuous). Verified the
+generated `.asset` files directly: correct script GUID reference (the
+known "only first ScriptableObject type per file" Unity bug doesn't
+apply here, each type already lives in its own file per that earlier
+fix), `massKg: 1580` present, correct sub-asset cross-references.
+150/150 EditMode + 28/28 PlayMode tests pass, 16 assemblies / 95 C#
+files, no reference cycles.

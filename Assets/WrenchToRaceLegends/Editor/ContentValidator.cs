@@ -32,6 +32,7 @@ namespace WTRL.EditorTools
 
             ValidateCanonicalBuildRecipes(issues);
             ValidateRacingLineTrackIds(issues);
+            ValidateResearchPartCatalog(issues);
 
             if (issues.Count == 0)
             {
@@ -110,6 +111,45 @@ namespace WTRL.EditorTools
                 if (line.TrackId != id)
                 {
                     issues.Add($"Racing.SampleContent: track '{id}' racing line's own TrackId is '{line.TrackId}' (mismatch)");
+                }
+            }
+        }
+
+        /// <summary>Guards the real invariant `ResearchPartConverter`
+        /// needs to hold across the entire 1,560-entry corpus: every
+        /// converted part has a unique id and a positive price, and
+        /// (the specific thing this converter promises never to
+        /// fabricate) exactly zero performance effect. See
+        /// `ResearchPartConverter.cs`'s own doc comment for why
+        /// TopSpeedDelta/AccelerationDelta must stay zero.</summary>
+        private static void ValidateResearchPartCatalog(List<string> issues)
+        {
+            Garage.PartCatalogDocument document;
+            try
+            {
+                document = Garage.PartCatalogImporter.LoadFromStreamingAssets();
+            }
+            catch (System.Exception ex)
+            {
+                issues.Add($"PartCatalogImporter: failed to load the research corpus ({ex.Message})");
+                return;
+            }
+
+            var parts = Garage.ResearchPartConverter.ConvertAll(document);
+            var seenIds = new HashSet<string>();
+            foreach (var part in parts)
+            {
+                if (!seenIds.Add(part.Id))
+                {
+                    issues.Add($"ResearchPartConverter: duplicate converted part id '{part.Id}'");
+                }
+                if (part.Price <= 0)
+                {
+                    issues.Add($"ResearchPartConverter: part '{part.Id}' has a non-positive price ({part.Price})");
+                }
+                if (part.TopSpeedDelta != 0 || part.AccelerationDelta != 0)
+                {
+                    issues.Add($"ResearchPartConverter: part '{part.Id}' has a nonzero performance delta -- should never happen by design");
                 }
             }
         }

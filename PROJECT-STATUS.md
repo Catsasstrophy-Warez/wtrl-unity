@@ -18,8 +18,8 @@ full design calls for.
 
 ## Test/build health (verified this session, not carried forward from memory)
 
-- 142/142 EditMode tests, 28/28 PlayMode tests, all passing.
-- 16 assemblies, 92 C# files, zero reference cycles.
+- 150/150 EditMode tests, 28/28 PlayMode tests, all passing.
+- 16 assemblies, 95 C# files, zero reference cycles.
 - 7 real scenes (`VerticalSlice.unity` + 6 `Scenes/Tracks/*.unity`) build
   cleanly from a batchmode Editor.
 - Zero self-intersecting-polygon warnings on the 2 accepted vehicle
@@ -36,8 +36,9 @@ full design calls for.
 
 | Category | Real / Total | Note |
 |---|---|---|
-| Vehicles with in-game `WTRL.Content` assets | 2 / 159 researched | Hero (`hero-1965`) and rival (`marsh-gen1`) only |
-| Gameplay-functional Garage parts | 3 / 1,560 researched | `PartCatalogImporter` reads the full corpus but produces inert research records, not `PartDefinition`s |
+| Vehicles with in-game `WTRL.Content` assets | 3 / 159 researched | Hero (`hero-1965`), rival (`marsh-gen1`), and Hero Mid-70s (`hero-mid70s`, real cited mass/power) |
+| Gameplay-functional (mechanically wired) Garage parts | 3 / 1,560 researched | Only 3 part ids do anything when installed (`VehicleConfigurationResolver`) |
+| Real, priced, browsable (but mechanically inert) Garage parts | 1,560 / 1,560 | `ResearchPartConverter` converts the full corpus into real `PartDefinition`s with a placeholder pricing formula -- not balanced, not wired to any performance effect (deliberately: no invented physics) |
 | Build recipes | 35 / 35 | Fully ported from the real Swift source — this one's actually done |
 | Tracks with real Blender meshes wired into Unity | 8 / 8 documented | But only Foundry Row has full VerticalSlice-scene parity (garage/dyno/HUD/audio); the other 7 have a minimal track-only scene |
 | Track/facility names that are corpus-sourced (not invented this project) | 5 / 8 | The 3 "original road-course" names and dimensions are this project's own invention, disclosed as such in code comments |
@@ -87,13 +88,24 @@ being followed — say so.
 ## What would most change the picture next
 
 Roughly in order of unblocking value, expanded on fully in
-`CHANGELOG.md`'s most recent entries:
-1. Contact/win-detection wired into a live per-frame caller (the
-   detection primitives already exist and are tested — `ContactDetector`,
-   `TrackProgress`, `OvertakeTracker` — nothing calls them yet).
-2. Batch-converting the 1,560-entry parts research corpus into real,
-   balanced `PartDefinition`s — needs human judgment on numbers, not
-   just more code.
+`CHANGELOG.md`'s most recent entries. The 3 items on the previous
+version of this list are all done now (contact/win-detection wired,
+1,560 parts converted to real inventory, a 3rd real vehicle built) --
+replaced with what's next:
+1. Wire the real, priced parts catalog (`ResearchPartConverter`) into
+   an actual Garage UI screen so it's browsable, and give at least a
+   few of its 1,560 entries a real, human-judged mechanical effect via
+   `VehicleConfigurationResolver` — right now the whole catalog is
+   inventory that does nothing when installed.
+2. Author `VehicleDefinitionAsset`s for the remaining 5 hero
+   generations `CanonicalBuildRecipes` already has real recipes
+   for (`hero-late80s`, `hero-mid90s`, `hero-early00s`, `hero-mid10s`,
+   `hero-2022`) — same tractable, mechanical builder pattern just used
+   for `hero-mid70s`, and each one has real cited mass/horsepower data
+   already sitting in `CanonicalBuildRecipes.cs`'s own comments waiting
+   to be reused.
 3. A human opening the Unity Editor and actually looking at any of
    this — nothing visual has been confirmed by eyes at any point in
-   this project's history in this environment.
+   this project's history in this environment. See
+   `racinggame/BlenderPipeline/REFERENCE-MODELING-ACCEPTANCE.md`'s own
+   "Human verification checklist" for a concrete, prioritized list.

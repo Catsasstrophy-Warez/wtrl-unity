@@ -198,5 +198,35 @@ namespace WTRL.Tests
             Assert.That(predator.RequiredTransmissionId, Is.EqualTo("7d"));
             Assert.That(predator.RequiredTransmissionId, Is.Not.EqualTo(voodoo.RequiredTransmissionId));
         }
+
+        [Test]
+        public void Hero75FullCompressionIsSatisfiableEndToEndUsingHeroMid70sContentBuildersRealCitedData()
+        {
+            // hero-mid70s is the project's 3rd real vehicle content
+            // asset (HeroMid70sContentBuilder.cs) -- this exercises one
+            // of the 5 real hero75-* recipes against it end to end, the
+            // same way Hero1965HipoSpec... does for hero-1965 above.
+            // 1580kg / 140hp = 11.29 kg/hp, exactly the top of this
+            // recipe's real 11.0-11.29 band -- both numbers are the
+            // real, cited figures from CanonicalBuildRecipes.cs's own
+            // mid-70s comment, not independently invented here.
+            var recipe = System.Linq.Enumerable.First(CanonicalBuildRecipes.All, r => r.Id == "hero75-full-compression");
+            Assert.That(recipe.RequiredDifferentialType, Is.EqualTo("lsd"));
+
+            var vehicle = new VehicleDefinition("hero-mid70s", "hero-mid70s", "Hero Mid-70s", massKg: 1580, wheelbaseM: 2.95,
+                engineId: "hero-mid70s-engine", transmissionId: "hero-mid70s-gearbox", suspensionId: "hero-mid70s-suspension")
+            {
+                Differential = DifferentialKind.ClutchLsd,
+            };
+            var engine = new EngineDefinition("hero-mid70s-engine", "Hero Mid-70s V8", displacementLiters: 5.8,
+                peakPowerHp: 140, peakTorqueLbFt: 280);
+
+            Assert.That(BuildRecipeEvaluator.SatisfiesTarget(recipe, vehicle, engine), Is.True);
+
+            // Confirms the check is real, not vacuously true: an open
+            // differential should fail this recipe's real requirement.
+            var openDiffVehicle = vehicle with { Differential = DifferentialKind.Open };
+            Assert.That(BuildRecipeEvaluator.SatisfiesTarget(recipe, openDiffVehicle, engine), Is.False);
+        }
     }
 }

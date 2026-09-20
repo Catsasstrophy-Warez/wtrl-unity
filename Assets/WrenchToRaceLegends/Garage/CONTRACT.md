@@ -204,3 +204,36 @@ match the document's own declared header counts exactly (1,560 / 30 /
 real family/generation record, and one specific real entry
 (`hero_1967.engineblockbottomend.factory`) round-trips its exact real
 field values.
+
+## Batch-converting the research corpus into gameplay parts (2026-09-20)
+
+Closes the half of "no batch importer connects the real JSON catalogs
+to the game" that can honestly be done without a human: new
+`ResearchPartConverter.ConvertAll` turns every one of the 1,560 real
+`ResearchPartRecord`s into a real, priced, named `PartDefinition`.
+
+**Deliberately NOT claimed as balanced game content**: the research
+corpus has no price, reputation-gate, or performance-delta data for
+any entry -- confirmed by reading real entries directly. `Price`/
+`ReputationRequired` come from a deterministic formula over real
+categorical fields the corpus DOES have (`Origin`/`Quality`/
+`VariantLevel`) -- explicitly flagged as a placeholder pricing curve,
+not researched or balance-tested. `TopSpeedDelta`/`AccelerationDelta`
+are hardcoded to exactly zero for every converted part -- inventing
+nonzero performance effects with no real physics basis would be
+exactly the kind of fabrication this project's "flag invented vs.
+sourced" discipline exists to prevent. Converted parts are deliberately
+NOT wired into `VehicleConfigurationResolver.Resolve`'s switch
+statement -- that resolver's entire value is that every recognized id
+has a real, intentional mechanical effect; giving 1,560 entries
+invented effects would defeat that guarantee. They're real, priced,
+browsable inventory that mechanically no-ops when installed, same as
+any other currently-unrecognized part id.
+
+`ContentValidator.ValidateAll` now also checks the full converted
+catalog: unique ids, positive prices, and (the one thing this
+converter promises never to do) exactly zero performance deltas on
+every single one of the 1,560 real entries -- confirmed clean by
+actually running it, not assumed. 7 new EditMode tests, including one
+that converts the entire real corpus and checks every resulting part.
+149/149 EditMode tests pass.

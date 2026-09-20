@@ -921,3 +921,35 @@ exactly the work this documentation exists to save.
   enrichment logic and a full live-race integration check). 142/142
   EditMode + 28/28 PlayMode tests pass, 16 assemblies / 92 C# files, no
   reference cycles (Claude).
+
+- 2026-09-20: Items #2 and #3 from PROJECT-STATUS.md's "what would most
+  change the picture next" list, in the same session as item #1 above.
+  **#2, batch-converting the parts corpus**: new
+  `Garage.ResearchPartConverter.ConvertAll` turns all 1,560 real
+  `ResearchPartRecord`s into real, priced, named `PartDefinition`s.
+  Explicitly not claimed as balanced content: Price/ReputationRequired
+  come from a deterministic formula over real categorical fields
+  (Origin/Quality/VariantLevel), flagged as placeholder pricing, not
+  researched; TopSpeedDelta/AccelerationDelta are hardcoded to exactly
+  zero for every part -- inventing performance effects with no physics
+  basis would be fabrication. Deliberately NOT wired into
+  `VehicleConfigurationResolver`'s switch statement, which exists
+  specifically to guarantee every recognized part id has a real,
+  intentional effect. `ContentValidator` now checks the full converted
+  catalog (unique ids, positive prices, zero performance deltas) --
+  confirmed clean by actually running it against all 1,560 real
+  entries, not assumed. 7 new EditMode tests.
+  **#3, more content in the established pattern**: new
+  `HeroMid70sContentBuilder` is the project's 3rd real vehicle content
+  asset, following the same pattern as Hero/Marsh -- but its mass
+  (1580kg) and peak power (140hp) are the REAL, already-cited figures
+  from `CanonicalBuildRecipes.cs`'s own mid-70s comment, reused rather
+  than re-cited to avoid a second possibly-inconsistent citation of the
+  same fact. New test confirms `hero75-full-compression` (one of the 5
+  real `hero75-*` recipes) is satisfiable end-to-end against this real
+  vehicle (1580/140 = 11.29 kg/hp, exactly the top of its real
+  11.0-11.29 band) and correctly fails with the wrong differential.
+  Verified the generated `.asset` files directly: correct script GUID,
+  correct data, correct cross-references.
+  150/150 EditMode + 28/28 PlayMode tests pass, 16 assemblies / 95 C#
+  files, no reference cycles (Claude).
