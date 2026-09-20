@@ -784,3 +784,28 @@ lives in the linked file — this is a pointer, not a replacement.
   Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass.
   Structural validator: 16 assemblies, 70 C# files, no reference
   cycles (Claude).
+
+- 2026-09-20: Further open-ended "improve graphics/visuals/assets"
+  pass. Fixed a real regression from the earlier visual pass:
+  `AttachVehicleModel` was painting every renderer -- including tires
+  and glass -- the same flat body-paint color. The source `.blend`
+  files already carry real per-part mesh names (`TIRE`, `RIM`,
+  `GLASSHOUSE`, `HEADLAMP_BEZEL`, `SEAT_BACK`, etc., confirmed via a
+  direct Blender name dump), so vehicles now get 7 distinct materials
+  keyed by part name: body paint, matte tire, metallic rim, a real
+  transparent glass material, chrome trim, warm lamp material, and a
+  dark interior material. Generated a procedural grass/dirt ground
+  texture via the same "author pixels in Blender, save as a plain PNG,
+  skip FBX embedding" pipeline already proven for track textures, and
+  wired it into the ground plane (still a flat plane, no terrain
+  height variation -- documented as a known limitation, not fixed
+  this pass). Replaced the two identical colored-cube facility markers
+  with a building silhouette (body + peaked roof + emissive sign).
+  Verified via scene-file GUID/keyword/name inspection (no visual
+  screenshot capability exists in this environment): the transparent-
+  glass keyword appears exactly twice (once per vehicle), the ground
+  texture's own GUID appears in the saved scene, and `Body`/`Roof`/
+  `Sign` sub-objects appear 6 times (2 facilities x 3 parts).
+  Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass.
+  Structural validator: 16 assemblies, 70 C# files, no reference
+  cycles (Claude).

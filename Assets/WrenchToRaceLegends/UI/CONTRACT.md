@@ -269,3 +269,65 @@ saved scene file for the materials' actual `_BaseMap` texture GUIDs
 and matching them against the real texture assets' own GUIDs.
 
 Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass.
+
+## Vehicle sub-materials, textured ground, and building-shaped facility markers (2026-09-20)
+
+A further, open-ended "improve graphics/visuals/assets" pass. Three
+changes, each verified by scene-file inspection rather than a
+screenshot (still no interactive-Editor visual confirmation exists in
+this environment):
+
+**Vehicle sub-materials (fixing a real regression from the earlier
+visual pass)**: `AttachVehicleModel` used to paint every single
+renderer -- tires, glass, chrome trim, lamps, the whole interior --
+the same flat body-paint color. This was checked directly against the
+real mesh part names (confirmed via a Blender `bpy.data.objects` name
+dump of `1967_crownfire_v7.blend`: `BODY_SHELL`, `TIRE.NNN`,
+`RIM.NNN`, `GLASSHOUSE`, `HEADLAMP_BEZEL`, `TAIL_LAMP`, `SEAT_BACK`,
+`STEERING_WHEEL`, `V8_BLOCK`, etc. -- these are real, meaningful part
+names the source `.blend` already carries, not something invented
+this pass). `AttachVehicleModel` now keys off `renderer.gameObject
+.name` (case-insensitive substring match) to assign one of 7 distinct
+materials: body paint, matte black tire, metallic rim, a genuinely
+transparent glass material (URP `_Surface`=Transparent, alpha blend,
+`ZWrite` off, `_SURFACE_TYPE_TRANSPARENT` keyword), chrome trim
+(bumpers/grille/mirrors/handles/pillars/bezels), warm lamp material
+(headlamps/tail lamps), and a dark interior material (seats/dash/
+steering wheel/engine block/intake/brakes). Verified by grepping the
+rebuilt scene for `_SURFACE_TYPE_TRANSPARENT` (appears exactly twice
+-- once per vehicle's glass material, as expected) and for the raised
+`m_Materials:` reference count on vehicle renderers (up from 1 shared
+material to 7 distinct ones).
+
+**Textured ground plane**: the ground was a single flat dark color.
+Generated a real 512x512 procedural grass/dirt texture via Blender's
+own pixel API (same "author pixels directly, save as plain PNG,
+skip FBX embedding entirely" pipeline already proven necessary for
+the track asphalt/barrier textures -- see the entry above on why FBX
+texture embedding doesn't survive Unity's importer). Saved to
+`Assets/WrenchToRaceLegends/Art/Environment/Textures/
+world_ground_grass.png` and also mirrored into `racinggame/
+BlenderPipeline/export/world_tracks/textures/` for provenance.
+`BuildGround` now loads it directly and tiles it 20x across the
+ground plane via `mainTextureScale`. There is still no real terrain
+system -- the ground remains a flat plane with zero height variation,
+which is an honest, documented limitation, not a claim of finished
+environment art. Verified by grepping the rebuilt scene for the
+texture asset's own `.meta` GUID (`6451feec7f15d184c81f448dfb5ceeff`)
+and confirming it appears in the saved scene file.
+
+**Building-shaped facility markers**: "Garage" and "Gas Station" used
+to be two identical bare cubes distinguished only by color.
+`BuildFacilityMarker` now builds a small building silhouette per
+facility: a body cube, a peaked roof cube rotated 45 degrees, and an
+emissive sign panel colored to match the facility's own color. Still
+a placeholder, not real building art -- no real facility geometry
+exists anywhere in the research corpus to model against, and this is
+explicitly documented as such in the method's doc comment. Verified
+by grepping the rebuilt scene for `m_Name: Body`, `m_Name: Roof`, and
+`m_Name: Sign` (6 matches total = 2 facilities x 3 parts each, as
+expected).
+
+Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass, and
+`Scripts/validate_structure.sh` still reports 16 assemblies, 70 C#
+files, no reference cycles.

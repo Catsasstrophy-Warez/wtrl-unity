@@ -161,12 +161,16 @@ namespace WTRL.EditorTools
         /// (see racinggame/BlenderPipeline/export/correct_axis_heroes/,
         /// the project's own documented "accepted blockout baseline" --
         /// not the disqualified procedural fleet output) as a child of
-        /// the simulation GameObject, with the axis correction and a
-        /// paint-color material applied to every renderer. The model has
-        /// no real material/texture authoring yet (see REFERENCE-
-        /// MODELING-ACCEPTANCE.md's own outstanding-work list), so a
-        /// flat paint color is a genuine improvement over Unity's default
-        /// magenta/gray missing-material look, not a finished paint job.</summary>
+        /// the simulation GameObject, with the axis correction applied.
+        /// The model has no real material/texture authoring yet (see
+        /// REFERENCE-MODELING-ACCEPTANCE.md's own outstanding-work
+        /// list), but its mesh objects DO carry real per-part names
+        /// (confirmed via a direct Blender name dump: BODY_SHELL,
+        /// TIRE.NNN, RIM.NNN, GLASSHOUSE, HEADLAMP/TAIL_LAMP, etc.), so
+        /// materials are now assigned per part-category instead of
+        /// painting every renderer -- including tires and glass -- the
+        /// single flat body-paint color, which was a real visual defect
+        /// in the earlier pass.</summary>
         private static void AttachVehicleModel(GameObject parent, string modelPath, Color paintColor)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
@@ -180,17 +184,58 @@ namespace WTRL.EditorTools
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = ModelAxisCorrection;
 
-            var paint = new Material(Shader.Find("Universal Render Pipeline/Lit"))
-            {
-                color = paintColor,
-            };
+            var paint = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = paintColor };
             paint.SetFloat("_Metallic", 0.6f);
             paint.SetFloat("_Smoothness", 0.7f);
 
+            var tire = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.05f, 0.05f, 0.05f, 1f) };
+            tire.SetFloat("_Metallic", 0f);
+            tire.SetFloat("_Smoothness", 0.15f);
+
+            var rim = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.75f, 0.75f, 0.78f, 1f) };
+            rim.SetFloat("_Metallic", 0.9f);
+            rim.SetFloat("_Smoothness", 0.85f);
+
+            var glass = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.08f, 0.1f, 0.12f, 0.55f) };
+            glass.SetFloat("_Metallic", 0.1f);
+            glass.SetFloat("_Smoothness", 0.95f);
+            glass.SetFloat("_Surface", 1f); // transparent
+            glass.SetOverrideTag("RenderType", "Transparent");
+            glass.SetInt("_ZWrite", 0);
+            glass.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            glass.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            glass.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            glass.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+
+            var trim = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.82f, 0.82f, 0.85f, 1f) };
+            trim.SetFloat("_Metallic", 0.95f);
+            trim.SetFloat("_Smoothness", 0.9f);
+
+            var interior = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.12f, 0.1f, 0.09f, 1f) };
+            interior.SetFloat("_Metallic", 0f);
+            interior.SetFloat("_Smoothness", 0.3f);
+
+            var lamp = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.9f, 0.85f, 0.7f, 1f) };
+            lamp.SetFloat("_Metallic", 0.2f);
+            lamp.SetFloat("_Smoothness", 0.9f);
+
             foreach (var renderer in instance.GetComponentsInChildren<Renderer>())
             {
+                var partName = renderer.gameObject.name.ToUpperInvariant();
+                Material chosen;
+                if (partName.Contains("TIRE")) chosen = tire;
+                else if (partName.Contains("RIM")) chosen = rim;
+                else if (partName.Contains("GLASSHOUSE")) chosen = glass;
+                else if (partName.Contains("MIRROR") || partName.Contains("BUMPER") || partName.Contains("GRILLE")
+                    || partName.Contains("HANDLE") || partName.Contains("VALANCE") || partName.Contains("ROCKER")
+                    || partName.Contains("PILLAR") || partName.Contains("BEZEL")) chosen = trim;
+                else if (partName.Contains("HEADLAMP") || partName.Contains("TAIL_LAMP") || partName.Contains("LAMP_PANEL")) chosen = lamp;
+                else if (partName.Contains("SEAT") || partName.Contains("DASHBOARD") || partName.Contains("STEERING")
+                    || partName.Contains("BRAKE") || partName.Contains("V8_BLOCK") || partName.Contains("INTAKE")) chosen = interior;
+                else chosen = paint;
+
                 var materials = new Material[renderer.sharedMaterials.Length];
-                for (var i = 0; i < materials.Length; i++) materials[i] = paint;
+                for (var i = 0; i < materials.Length; i++) materials[i] = chosen;
                 renderer.sharedMaterials = materials;
             }
         }
@@ -230,6 +275,18 @@ namespace WTRL.EditorTools
             volume.profile = profile;
         }
 
+        /// <summary>The surrounding terrain plane. Previously a single flat
+        /// dark color (correct for "empty ground" but visually inert at any
+        /// distance). Now uses a procedurally generated grass/dirt texture
+        /// (racinggame/BlenderPipeline/scripts -- same "generate a PNG via
+        /// Blender's own pixel API, save as a plain file, load directly in
+        /// C#" pipeline already proven for the track asphalt/barrier
+        /// textures, since FBX-embedded textures are known not to survive
+        /// Unity's importer). Tiled 20x across the plane via material
+        /// texture scale rather than baked into geometry -- there is still
+        /// no real terrain system (no height variation), which is an
+        /// honest, documented limitation, not a claim of finished
+        /// environment art.</summary>
         private static void BuildGround()
         {
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -237,12 +294,21 @@ namespace WTRL.EditorTools
             ground.transform.position = Vector3.zero;
             ground.transform.localScale = new Vector3(20, 1, 20); // Unity plane primitive is 10x10 units
 
-            var asphalt = new Material(Shader.Find("Universal Render Pipeline/Lit"))
+            var groundTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/WrenchToRaceLegends/Art/Environment/Textures/world_ground_grass.png");
+
+            var grass = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            if (groundTex != null)
             {
-                color = new Color(0.16f, 0.16f, 0.17f),
-            };
-            asphalt.SetFloat("_Smoothness", 0.25f);
-            ground.GetComponent<Renderer>().sharedMaterial = asphalt;
+                grass.mainTexture = groundTex;
+                grass.mainTextureScale = new Vector2(20f, 20f);
+            }
+            else
+            {
+                grass.color = new Color(0.16f, 0.16f, 0.17f);
+            }
+            grass.SetFloat("_Smoothness", 0.1f);
+            ground.GetComponent<Renderer>().sharedMaterial = grass;
         }
 
         /// <summary>Instantiates the real ribbon-road mesh generated by
@@ -336,16 +402,48 @@ namespace WTRL.EditorTools
             }
         }
 
+        /// <summary>Builds a facility placeholder as a small building
+        /// silhouette (a box body plus a peaked roof wedge) instead of a
+        /// single bare colored cube -- so "Garage" and "Gas Station" read
+        /// as distinct structures at a glance rather than two identical
+        /// cubes that only differ by color. Still a placeholder, not real
+        /// building art (no real facility geometry exists in the research
+        /// corpus to model against).</summary>
         private static GameObject BuildFacilityMarker(string name, Vector3 position, Color color)
         {
-            var marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            marker.name = name;
-            marker.transform.position = position + Vector3.up * 1.5f;
-            marker.transform.localScale = new Vector3(4, 3, 4);
-            var renderer = marker.GetComponent<Renderer>();
-            var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
-            renderer.sharedMaterial = material;
-            return marker;
+            var root = new GameObject(name);
+            root.transform.position = position;
+
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.name = "Body";
+            body.transform.SetParent(root.transform);
+            body.transform.localPosition = new Vector3(0, 1.5f, 0);
+            body.transform.localScale = new Vector3(4, 3, 4);
+            var bodyMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
+            bodyMaterial.SetFloat("_Smoothness", 0.2f);
+            body.GetComponent<Renderer>().sharedMaterial = bodyMaterial;
+
+            var roof = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            roof.name = "Roof";
+            roof.transform.SetParent(root.transform);
+            roof.transform.localPosition = new Vector3(0, 3.3f, 0);
+            roof.transform.localRotation = Quaternion.Euler(0, 45, 0);
+            roof.transform.localScale = new Vector3(3.1f, 0.3f, 3.1f);
+            var roofMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.25f, 0.22f, 0.2f) };
+            roofMaterial.SetFloat("_Smoothness", 0.35f);
+            roof.GetComponent<Renderer>().sharedMaterial = roofMaterial;
+
+            var sign = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sign.name = "Sign";
+            sign.transform.SetParent(root.transform);
+            sign.transform.localPosition = new Vector3(0, 3.9f, 2.2f);
+            sign.transform.localScale = new Vector3(2.4f, 0.5f, 0.1f);
+            var signMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = Color.white };
+            signMaterial.EnableKeyword("_EMISSION");
+            signMaterial.SetColor("_EmissionColor", color * 2f);
+            sign.GetComponent<Renderer>().sharedMaterial = signMaterial;
+
+            return root;
         }
 
         private static void BuildAudioRig(GameObject vehicleGo, VehicleRuntimeController controller)
