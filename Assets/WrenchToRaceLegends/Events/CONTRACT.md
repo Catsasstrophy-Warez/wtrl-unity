@@ -73,3 +73,15 @@ assemblies now shipped: `WTRL.Vehicle` (5) + `WTRL.Racing` (8) +
 `WTRL.Garage` (9) + `WTRL.Lab` (6) + `WTRL.RPG` (15) + `WTRL.World`/
 `WTRL.Events` combined (11 — both live in the same
 `Tests/EditMode/WorldAndEventsTests.cs`: 7 for Events, 4 for World).
+
+## RaceFlowController — the 8-state wrapper (2026-09-20)
+
+`RaceFlowController`/`RaceFlowPhase` — the 8-state wrapper
+(Inactive/Loading/Staging/Countdown/Racing/Finishing/Results/Complete)
+this file's own header comment already named as "worth layering on top
+... once scene-loading and a results-display flow actually exist."
+Those two things still don't exist as real systems — this controller
+doesn't itself load a scene or render results, `Loading`/`Results` are
+just phases a caller transitions through explicitly at the right
+points. Wraps the real, already-tested 4-phase `RaceRuntimeState` core
+unchanged.

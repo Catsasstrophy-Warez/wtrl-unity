@@ -99,5 +99,35 @@ namespace WTRL.Tests
             var recipe = SavedBuildRecipe.CreateTarget("x", "r1");
             Assert.That(recipe.TargetRecipeDefinitionId, Is.TypeOf<string>());
         }
+
+        [Test]
+        public void Hero1965TrackBuildRecipeIsSatisfiableEndToEnd()
+        {
+            // The project's first fully authored, end-to-end-satisfiable
+            // recipe (0 of 35 spec'd recipes existed as real content
+            // before this). Exercises the full path: content -> Garage's
+            // satisfaction check -> RPG's progression state -> completion.
+            var recipe = SampleContent.Hero1965TrackBuild();
+            var vehicle = new VehicleDefinition("hero-1965", "hero-1965", "Hero 1965", massKg: 1450, wheelbaseM: 2.6,
+                engineId: "hero-1965-engine", transmissionId: "hero-1965-gearbox", suspensionId: "hero-1965-suspension");
+            var engine = new EngineDefinition("hero-1965-engine", "Hero 1965 V8", displacementLiters: 5.0,
+                peakPowerHp: 420, peakTorqueLbFt: 390);
+
+            // The base street configuration (open differential) does NOT
+            // satisfy the recipe's required "lsdRace" differential --
+            // confirms the check is real, not vacuously true.
+            Assert.That(BuildRecipeEvaluator.SatisfiesTarget(recipe, vehicle, engine), Is.False);
+
+            var trackVehicle = vehicle with { Differential = DifferentialKind.TorqueBiasing };
+            Assert.That(BuildRecipeEvaluator.SatisfiesTarget(recipe, trackVehicle, engine), Is.True);
+
+            var saved = SavedBuildRecipe.CreateTarget("My Track Build", recipe.Id,
+                unlockedTitle: recipe.UnlockedTitle, unlockedLiveryId: recipe.UnlockedLiveryId);
+            Assert.That(saved.IsCompleted, Is.False);
+
+            saved.MarkCompleted();
+            Assert.That(saved.IsCompleted, Is.True);
+            Assert.That(saved.UnlockedTitle, Is.EqualTo("Track Regular"));
+        }
     }
 }

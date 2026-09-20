@@ -73,3 +73,43 @@ real editor tooling) programmatically creates a full hero-1965
 `Content/Generated/`. Building this surfaced and fixed a real Unity
 Editor bug — see `Content/CONTRACT.md`'s "A real Unity Editor bug
 found and fixed" section.
+
+## Best-effort UI/systems pass (2026-09-20) — functional, not designed
+
+Added, all confirmed to compile clean in a real Unity Editor:
+
+- **`WorldStreamingController`** — wires `WTRL.World.WorldStreamingGrid`
+  (previously fully presentation-agnostic, nothing consumed its
+  load/unload deltas) to a follow target's transform. Does NOT
+  instantiate/destroy any content itself — no cell-content prefabs
+  exist yet — it only raises the real signal for a future consumer.
+- **`VehicleAudioController`** — maps `VehicleAudioState`'s 6 procedural
+  layers to 6 real `AudioSource`s (volume from `Gain`, pitch from
+  `FrequencyHz` against a reference frequency). No audio clips are
+  assigned anywhere — silent until real recorded loops exist.
+- **`TelemetryHud`**, **`GarageScreen`**, **`DynoScreen`** — functional
+  IMGUI (`OnGUI`) screens, not Canvas/UGUI. No scene, prefab, or font
+  asset existed to build real UI against, and hand-authoring
+  RectTransform layouts blind would be worse than an honest plain
+  panel. `GarageScreen` only lists the 3 part ids
+  `VehicleConfigurationResolver` actually recognizes
+  (`WTRL.Garage.SampleContent.RecognizedParts`) — buying/installing a
+  part is a real `CareerTransaction`, not a mock. `DynoScreen` re-runs
+  `DynoSimulation.Run` live as its 3 sliders move.
+- **`CareerStateHolder`** — minimal scene-level owner of one fresh
+  `CareerState()`; nothing wires it to a real save file yet.
+- **`SimpleFollowCamera`** — plain lerp-follow, not Cinemachine-based
+  despite `com.unity.cinemachine` being installed. Configuring a real
+  Cinemachine rig needs visual iteration this pass can't do blind.
+- **Touch + tilt input** added to `VehicleRuntimeController` (additive
+  with keyboard): tap-zone throttle/brake, accelerometer-based steering
+  with deadzone + power-curve response. This is NOT a port of Rev16.1's
+  real `MobileInputMath.cs` (that archive wasn't read in this pass) —
+  a reasonable equivalent shape, flagged as such in the code.
+
+**None of this has been visually reviewed.** Every piece above compiles
+and (where covered by `VehicleRuntimeControllerTests`) runs without
+exceptions, but nobody has looked at the Garage/Dyno/HUD screens on
+screen, heard the audio, or driven with tilt on a real device. Treat
+all of it as a first functional pass awaiting real review, not a
+finished feature.

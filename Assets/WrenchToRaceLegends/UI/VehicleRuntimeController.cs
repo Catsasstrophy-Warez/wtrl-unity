@@ -37,6 +37,23 @@ namespace WTRL.UI
         [Header("Track context")]
         public double bankingDegrees;
 
+        // Touch/tilt controls, additive with keyboard -- closes the
+        // "wire touch + tilt controls" gap. PROJECT-MAP-UNITY-MOBILE.md's
+        // vertical slice calls for "touch+tilt controls"; the Rev16.1
+        // audit (Assignments/OUTPUT-Rev16.1-Audit.md) recommends porting
+        // that project's real `MobileInputMath.cs` (deadzone, response
+        // curve, speed-sensitivity scaling) near-verbatim. That file
+        // wasn't available to read in this pass (Rev16.1 is an archived
+        // zip, not something this session extracted), so the shape below
+        // (deadzone + power-curve response) is a reasonable equivalent,
+        // NOT a port -- replace with the real MobileInputMath logic if
+        // that archive becomes available to read directly.
+        [Header("Touch/tilt (mobile) -- additive with keyboard")]
+        [SerializeField] private bool useTiltSteering = true;
+        [SerializeField] private float tiltDeadzone = 0.05f;
+        [SerializeField] private float tiltResponseCurve = 1.5f;
+        [SerializeField] private bool useTouchThrottleBrake = true;
+
         private WTRLRuntime _runtime;
         private EngineDefinition _engine;
         private TransmissionDefinition _transmission;
@@ -81,6 +98,24 @@ namespace WTRL.UI
                 if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) steering += 1;
             }
 
+            if (useTouchThrottleBrake && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed)
+            {
+                // Crude left-half-brake / right-half-throttle tap zones --
+                // a real touch HUD (accelerator/brake pedals, or a single
+                // combined slider) is future UI work, not this
+                // controller's job.
+                var touchX = Touchscreen.current.primaryTouch.position.ReadValue().x;
+                if (touchX > Screen.width * 0.5f) throttle += 1; else brake += 1;
+            }
+
+            if (useTiltSteering && Accelerometer.current != null)
+            {
+                var tilt = Mathf.Clamp(Accelerometer.current.acceleration.ReadValue().x, -1f, 1f);
+                var deadzoned = Mathf.Abs(tilt) < tiltDeadzone ? 0f : tilt;
+                steering += Mathf.Sign(deadzoned) * Mathf.Pow(Mathf.Abs(deadzoned), tiltResponseCurve);
+            }
+
+            steering = Mathf.Clamp((float)steering, -1f, 1f);
             Tick(new VehicleInput(throttle, brake, steering));
         }
 

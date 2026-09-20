@@ -197,3 +197,17 @@ waypoints end to end.
 Node coordinates and target speeds are placeholder shapes, not derived
 from any real track survey — flagged the same way the rival roster's
 Blender blockout dimensions were.
+
+## EventPreflightService — scoped-down gate (2026-09-20)
+
+`EventPreflightService.Evaluate`/`CanEnter` — real implementation of
+the event-preflight gating the Rev16.1 audit recommended
+(`Assignments/OUTPUT-Rev16.1-Audit.md`), deliberately scoped to only
+the two axes real data already backs: reputation
+(`RaceDefinition.ReputationRequired` vs `CareerState.Reputation`) and
+Safety Rating/license gating for knockout entry. Rev16.1's full gate
+also checked chapter, lineage, homologation, fuel plan, and loadout —
+none of those are systems that exist anywhere in this project yet, and
+faking checks against data that doesn't mean anything would be worse
+than not building them. Extending this to those axes is real future
+work, gated on those systems existing first.

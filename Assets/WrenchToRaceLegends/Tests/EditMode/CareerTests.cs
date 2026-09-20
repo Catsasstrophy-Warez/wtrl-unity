@@ -262,5 +262,51 @@ namespace WTRL.Tests
 
             Assert.Throws<System.InvalidOperationException>(() => session.BuildOutcomeCommand(playerWon: true));
         }
+
+        [Test]
+        public void PreflightBlocksEntryBelowRequiredReputation()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 2,
+                reputationRequired: 50);
+            var state = new CareerState { Reputation = 10 };
+
+            var checks = EventPreflightService.Evaluate(race, state);
+
+            Assert.That(checks, Has.Some.Matches<PreflightCheck>(c => c.Code == "reputation" && c.Severity == PreflightSeverity.Blocker));
+            Assert.That(EventPreflightService.CanEnter(race, state), Is.False);
+        }
+
+        [Test]
+        public void PreflightPermitsEntryOnceReputationRequirementIsMet()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 2,
+                reputationRequired: 50);
+            var state = new CareerState { Reputation = 60 };
+
+            Assert.That(EventPreflightService.CanEnter(race, state), Is.True);
+        }
+
+        [Test]
+        public void PreflightBlocksKnockoutEntryBelowMinimumSafetyRatingAtContenderGrade()
+        {
+            var race = new RaceDefinition("knockout-01", "Knockout Cup", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0) { Format = RaceFormat.Knockout };
+            var state = new CareerState();
+            state.DriverLicense.Promote(DriverLicenseGrade.Contender);
+            for (var i = 0; i < 5; i++) state.SafetyRating.RecordEvent(SafetyEvent.PlayerCausedContact); // 100 -> 60
+
+            Assert.That(EventPreflightService.CanEnter(race, state), Is.False);
+        }
+
+        [Test]
+        public void PreflightNeverBlocksKnockoutEntryAtProvisionalGradeRegardlessOfSafetyRating()
+        {
+            var race = new RaceDefinition("knockout-01", "Knockout Cup", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0) { Format = RaceFormat.Knockout };
+            var state = new CareerState();
+            for (var i = 0; i < 10; i++) state.SafetyRating.RecordEvent(SafetyEvent.PlayerCausedContact); // 100 -> 20
+
+            Assert.That(EventPreflightService.CanEnter(race, state), Is.True);
+        }
     }
 }

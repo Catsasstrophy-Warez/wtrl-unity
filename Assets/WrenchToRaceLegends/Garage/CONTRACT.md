@@ -119,3 +119,15 @@ Verified: `dotnet test` (76/76, unchanged) confirms this refactor
 didn't change behavior, and this assembly's `.dll` now also compiles
 cleanly inside a real, licensed Unity Editor — the first time anything
 in this project has been proven to build there.
+
+## First fully satisfiable build recipe; recognized-parts catalog (2026-09-20)
+
+`SampleContent.Hero1965TrackBuild()` — the project's first
+end-to-end-satisfiable `BuildRecipeDefinition` (0 of 35 spec'd recipes
+existed as real content before this), sized against the hero-1965
+fixture numbers already used throughout `Tests/EditMode`.
+`SampleContent.RecognizedParts` — the 3 part ids
+`VehicleConfigurationResolver.Resolve` actually does anything with,
+now available as real `PartDefinition` content for
+`WTRL.UI.GarageScreen` to list rather than a UI screen inventing its
+own disconnected part list.

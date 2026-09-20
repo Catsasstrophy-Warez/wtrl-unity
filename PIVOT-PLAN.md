@@ -628,3 +628,47 @@ lives in the linked file — this is a pointer, not a replacement.
   test` method (90/90) and the real Unity Editor Test Runner (91/91).
   Structural validator: 16 assemblies, 57 C# files, no reference
   cycles (Claude).
+- 2026-09-20: Best-effort pass on the remaining roadmap items that
+  don't need visual review to be real (steps 16-25, 27), per explicit
+  instruction to do everything possible and defer visual judgment to a
+  later review — everything below compiles and passes tests, but
+  nothing has been looked at on screen or heard.
+  **Pure logic, fully tested** (verified via both `dotnet test`, 97/97,
+  and the real Unity Editor Test Runner, 98/98 EditMode + 4/4 PlayMode):
+  `Career/EventPreflightService.cs` (event-preflight gating, scoped to
+  reputation + Safety Rating/license only — the other axes Rev16.1's
+  audit checked, chapter/lineage/homologation/fuel/loadout, aren't real
+  systems in this project yet); `Events/RaceFlowController.cs` (the
+  8-state wrapper this project has referenced as future work since
+  Events was first ported); `Garage/SampleContent.cs`'s
+  `Hero1965TrackBuild()` (the project's first fully satisfiable build
+  recipe, 0 of 35 existed before) and `RecognizedParts` (the 3 part ids
+  `VehicleConfigurationResolver` actually does anything with).
+  **Unity-dependent, compiles clean, exercised by existing PlayMode
+  tests where applicable, but visually unreviewed**: `WorldStreaming
+  Controller` (wires the previously-unconsumed `WorldStreamingGrid` to
+  a follow target), `VehicleAudioController` (maps the 6 procedural
+  audio layers to real `AudioSource`s — no clips assigned anywhere),
+  `TelemetryHud`/`GarageScreen`/`DynoScreen` (functional IMGUI screens,
+  not designed UI — no Canvas/prefab/font asset existed to build real
+  UI against), `CareerStateHolder`, `SimpleFollowCamera` (plain lerp,
+  not Cinemachine despite the package being installed — real rig setup
+  needs visual iteration), and touch/tilt input added to
+  `VehicleRuntimeController` (NOT a port of Rev16.1's real
+  `MobileInputMath.cs`, which wasn't available to read this pass — a
+  reasonable equivalent shape, flagged as such).
+  **Assembled all of it into one real scene**:
+  `Editor/VerticalSliceSceneBuilder.cs` creates
+  `Assets/WrenchToRaceLegends/Scenes/VerticalSlice.unity` — a Foundry
+  Row circuit blockout (primitive markers at the real
+  `SampleContent.FoundryRowCircuitLine` waypoints) plus two facility
+  markers (Garage, Gas Station), the hero-1965 vehicle wired to every
+  system above, a plain follow camera, and a directional light. No
+  mesh/texture/lighting authoring happened — primitives and default
+  materials only. This is the project's first real scene file.
+  **Not done, and flagged as not achievable this pass**: step 29
+  (playtesting the reputation/class-bracket thresholds) needs an actual
+  human playing the game, which cannot happen inside this session.
+  The single most important next step is still the one this pass could
+  not do itself: open `VerticalSlice.unity`, press Play, and look at
+  what's there (Claude).

@@ -128,5 +128,47 @@ namespace WTRL.Tests
             Assert.That(toLoad, Is.Empty);
             Assert.That(toUnload, Is.Empty);
         }
+
+        [Test]
+        public void RaceFlowControllerProgressesThroughAllEightStatesInOrder()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0);
+            var flow = new RaceFlowController(race);
+
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Inactive));
+            flow.BeginLoading();
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Loading));
+            flow.FinishLoading();
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Staging));
+            flow.BeginCountdown(1);
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Countdown));
+
+            flow.Advance(1); // exhausts countdown, auto-starts the inner state machine
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Racing));
+
+            flow.Advance(30);
+            flow.CompleteLap(); // laps: 1 -> inner state machine finishes
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Finishing));
+
+            flow.ShowResults();
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Results));
+            flow.Complete();
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Complete));
+        }
+
+        [Test]
+        public void RaceFlowControllerIgnoresOutOfOrderTransitions()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0);
+            var flow = new RaceFlowController(race);
+
+            flow.BeginCountdown(3); // illegal from Inactive -- should be a no-op
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Inactive));
+
+            flow.Complete(); // illegal from Inactive -- should be a no-op
+            Assert.That(flow.Phase, Is.EqualTo(RaceFlowPhase.Inactive));
+        }
     }
 }
