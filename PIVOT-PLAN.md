@@ -356,3 +356,15 @@ than assuming it.
   core needs WTRL.Runtime's scene-loading/results-flow to exist first —
   documented in Events/CONTRACT.md, not implemented speculatively)
   (Claude).
+- 2026-09-19: Ported `WTRL.Career`'s `CareerTransaction`/`CareerCommand`
+  from `SwiftRacer`'s `CareerTransaction.swift` (atomic batch apply —
+  clone, mutate, commit only on full success), plus new `CareerState`
+  (the runtime model tying together Garage/Racing/Events/RPG state) and
+  ported `VehicleHistoryEvent`. Deliberately left `.recordEvidence`
+  unported — needs `WTRL.Lab.TestRunEvidence`, a dependency `WTRL.Career`
+  doesn't have; flagged as an open question rather than resolved
+  unilaterally (same shape as the `BuildRecipe` question, see Career/
+  CONTRACT.md). Verified: 0 errors, 0 warnings, 9 new tests (1 ported +
+  8 new), 63/63 passing project-wide across all eight real assemblies
+  now shipped (Vehicle, Racing, Garage, Lab, RPG, World, Events,
+  Career). Moving on to WTRL.Persistence next per instruction (Claude).
