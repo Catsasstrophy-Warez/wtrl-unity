@@ -389,3 +389,35 @@ than assuming it.
   real assemblies now shipped**: Vehicle, Racing, Garage, Lab, RPG,
   World, Events, Career, Persistence. Moving on to WTRL.Runtime next
   per instruction (Claude).
+- 2026-09-19: Ported `WTRL.Runtime` from `SwiftRacer`'s
+  `WTRLRuntime.swift`/`PresentationState.swift`/`SamplingPolicy.swift`
+  — the composition root tying `VehicleSimulation.Step` to a
+  `FixedStepClock`, deriving presentation/audio state, and recording
+  rate-gated telemetry. This is the tenth and final assembly in this
+  porting pass and completes the explicit "Career, then Persistence,
+  then Runtime" sequence. Same no-catalog deviation as every prior
+  assembly: `Advance` takes fully-resolved definitions every call
+  rather than resolving them from a global catalog that doesn't exist.
+  Caught and corrected one design inconsistency via self-review before
+  compiling (an early draft made `suspension` nullable with a
+  fallback default, contradicting `VehicleSimulation.Step`'s own
+  established discipline). **Also caught a real, previously-unnoticed
+  bug via `dotnet test` itself** (not self-review, not the compiler):
+  `new FixedStepClock()` doesn't call the constructor overload with a
+  default `hz` parameter for a struct — it silently zero-initializes,
+  giving `Step == 0` and turning `Consume` into an infinite loop. This
+  compiled clean with 0 warnings and only surfaced as `dotnet test`
+  hanging with `testhost` burning CPU; fixed by constructing with the
+  rate spelled out explicitly everywhere. Documented at length in
+  Runtime/CONTRACT.md as the first bug this whole pass that neither
+  the compiler nor self-review caught. Verified: 0 errors, 0 warnings
+  on build; 6 new tests (a corrected fixed-step-determinism check now
+  driven through the real public API, four-corner telemetry evidence,
+  telemetry rate-gating, reset/shift-mode/diagnostics coverage).
+  **76/76 passing project-wide across all ten real assemblies now
+  shipped**: Vehicle, Racing, Garage, Lab, RPG, World, Events, Career,
+  Persistence, Runtime. This completes every assembly named in
+  PIVOT-PLAN's original content-porting map; next steps are Unity-
+  Editor-side integration (MonoBehaviour wrappers, scene setup) which
+  cannot be verified further via throwaway `dotnet` projects alone
+  (Claude).
