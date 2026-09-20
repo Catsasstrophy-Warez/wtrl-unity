@@ -1083,3 +1083,42 @@ lives in the linked file — this is a pointer, not a replacement.
   content this project's whole discipline exists to prevent. 137/137
   EditMode + 22/22 PlayMode tests pass (up from 125/18), 16 assemblies
   / 92 C# files, no reference cycles (Claude).
+
+- 2026-09-20: A "deep, comprehensive analysis" pass -- 3 parallel
+  research audits (architecture/code quality, content completeness/
+  data-authenticity, art-pipeline + documentation health) plus direct
+  verification, aimed specifically at finding what prior audits missed
+  rather than re-confirming what they already found. Real results:
+  **(1) one genuine latent bug** in `RaceSessionController`'s lap-
+  detection heuristic -- a hardcoded 2x radius multiplier meant a
+  vehicle had to travel >30m from start before a lap could register at
+  all, which would silently hang any race on a track smaller than that
+  forever. Fixed with two independent, validated radius fields and a
+  loud error instead of a silent hang; new test confirms both the
+  warning and the recovery. **(2) two more stale CONTRACT.md claims**
+  found (`Lab/CONTRACT.md` claiming `WTRLRuntime`/`WTRL.Runtime` didn't
+  exist, `Events/CONTRACT.md` claiming event-preflight gating wasn't
+  implemented -- both real and already closed in earlier sessions,
+  just never marked). That's 5 stale-doc instances found across this
+  whole session now -- a real, recurring process gap, not isolated
+  incidents. **(3) content-completeness accounting, with real
+  fractions**: 2 of 159 researched vehicles have real in-game content
+  (~1.3%); 3 real gameplay-functional parts against a 1,560-entry inert
+  research catalog (under 0.2%); of 8 real tracks, names are 5/8
+  corpus-sourced honestly flagged, the rest self-disclosed as invented;
+  the "sourced/real" citation discipline was spot-checked against 2
+  actual corpus source files and found accurate both times. **(4) art
+  gates: still 2 of 10 met** (wheel centers/radius/track/axle, and
+  wheel-arch-cut-into-body-topology) -- confirmed via the acceptance
+  doc's own honest changelog, not re-litigated. Vehicles confirmed to
+  have zero PBR maps (the ground/track PBR pass never touched them).
+  Zero scenery (trees/buildings/poles) exists in any scene beyond the
+  barrier walls already built. **(5) flagged, not fixed**: this file
+  (`PIVOT-PLAN.md`) is now 1,085+ lines of pure narrative accretion --
+  a real maintenance concern worth a future restructure (append-only
+  changelog + a short separately-maintained "current state" summary),
+  not attempted this pass. All findings independently verified (not
+  trusted from agent self-report) before acting: re-read the actual
+  bug's code, re-ran the actual test suite, re-checked the actual
+  citation source files. 137/137 EditMode + 23/23 PlayMode tests pass,
+  16 assemblies / 92 C# files, no reference cycles (Claude).

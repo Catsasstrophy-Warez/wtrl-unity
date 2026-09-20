@@ -73,10 +73,14 @@ ported yet. **24/24 passing combined** with `WTRL.Vehicle` (5),
   Bigger scope than this pass; port separately if the adoption pipeline
   is actually needed rather than the dyno/telemetry/evidence primitives
   this pass covered.
-- `WTRLRuntime` itself (the 120 Hz game-loop wrapper that drives
-  `VehicleSimulation.Step` through a `FixedStepClock` and appends to a
-  `RuntimeTelemetryRing` every frame) — that's `WTRL.Runtime`'s job, and
-  nothing in `WTRL.Runtime` exists yet.
+- ~~`WTRLRuntime` itself ... nothing in `WTRL.Runtime` exists yet~~ --
+  **STALE, CLOSED**: `Runtime/WTRLRuntime.cs` is real, tested
+  (`Tests/EditMode/WTRLRuntimeTests.cs`), and has a real
+  `MonoBehaviour` wrapper too (`UI/VehicleRuntimeController.cs`'s
+  `FixedUpdate()` calls `Advance` every physics tick). Found stale by a
+  documentation-health audit, not by new work in this pass -- the same
+  lesson flagged repeatedly elsewhere this session: update the original
+  gap entry in the same pass that closes it.
 
 ## Unity-Editor compile fix (2026-09-20)
 

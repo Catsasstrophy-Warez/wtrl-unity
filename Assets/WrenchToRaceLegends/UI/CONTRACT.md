@@ -598,3 +598,25 @@ via simulated vehicle movement (no IMGUI executes in headless runs, so
 `ResultsScreen.IsShowing`/`BuildSummaryText` and `CareerState` are
 asserted directly, same pattern as `ResultsScreenTests.cs`). 137/137
 EditMode + 22/22 PlayMode tests pass.
+
+## Real bug found and fixed: lap detection could hang forever on a smaller track (2026-09-20)
+
+Found by a deep-dive review, not a symptom: the original single-field
+`lapDetectionRadiusM` design hardcoded a 2x multiplier for the
+"departed the start zone" check (`distance > lapDetectionRadiusM * 2`).
+At the shipped default (15m), a vehicle had to travel more than 30m
+from the start position before a lap could register AT ALL -- on any
+track whose loop is smaller than that (a tight autocross layout, or
+simply a smaller radius tuned for a tighter track), `_hasLeftStartZone`
+could never become true and the race would hang in `Racing` phase
+forever, with no error. Not exercised by Foundry Row's current scale,
+but a real, latent correctness bug with zero defensive check.
+
+Fixed by splitting into two independent fields (`returnRadiusM`/
+`departureRadiusM`), with a loud `Debug.LogError` + safe fallback in
+`Start()` if they're ever misconfigured (`departureRadiusM <=
+returnRadiusM`) instead of a silent hang. New test
+(`MisconfiguredRadiiFallBackInsteadOfHangingTheRaceForever`) configures
+exactly that misconfiguration and asserts both that the warning fires
+(`LogAssert.Expect`) and that a lap still completes rather than
+hanging. 137/137 EditMode + 23/23 PlayMode tests pass.

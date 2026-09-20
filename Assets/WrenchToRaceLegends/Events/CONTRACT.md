@@ -44,17 +44,17 @@ deliberately doesn't need to know about. Not implemented yet because
 `WTRL.Runtime` doesn't exist — premature to add wrapping states with
 nothing to wrap.
 
-## Event preflight gating — not yet implemented
+## Event preflight gating — CLOSED (stale entry corrected)
 
-The other Rev16.1 audit recommendation — designing an entry gate against
-`EventPreflightService.Evaluate`'s real check list (reputation, chapter,
-lineage, homologation, fuel, loadout/spares) — is real, valuable, and
-NOT done in this pass. It needs `WTRL.Career`'s reputation/chapter state
-and `WTRL.Garage`'s vehicle/loadout state as inputs, so it's more
-naturally `WTRL.Career`'s concern once that assembly exists (matching
-`WTRL.RPG`'s own established pattern of staying dependency-light and
-pushing cross-cutting orchestration to `WTRL.Career`). Tracked here so
-it isn't lost.
+~~The other Rev16.1 audit recommendation ... is real, valuable, and NOT
+done in this pass~~ -- **STALE**: `WTRL.Career` now exists, and
+`Career/EventPreflightService.cs` implements exactly this gate
+(scoped, by design, to the two axes real data actually backs --
+reputation and Safety Rating/license, not the full chapter/lineage/
+homologation/fuel/loadout list this note originally hoped for, since
+those systems don't exist yet either -- see `Career/CONTRACT.md`'s own
+"deliberately scoped down" note). This file was never updated when
+that closed. Found by a documentation-health audit, not new work here.
 
 ## Verification
 

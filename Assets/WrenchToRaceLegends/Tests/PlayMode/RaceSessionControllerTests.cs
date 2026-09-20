@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using WTRL.Career;
 using WTRL.Events;
 using WTRL.UI;
@@ -46,9 +47,12 @@ namespace WTRL.Tests
             typeof(RaceSessionController).GetField("countdownSeconds",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 .SetValue(controller, 0f);
-            typeof(RaceSessionController).GetField("lapDetectionRadiusM",
+            typeof(RaceSessionController).GetField("returnRadiusM",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 .SetValue(controller, 5f);
+            typeof(RaceSessionController).GetField("departureRadiusM",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(controller, 10f);
 
             // Start() is a private Unity message -- invoke it directly
             // rather than waiting a real frame, since EditMode/PlayMode
@@ -133,6 +137,44 @@ namespace WTRL.Tests
             Assert.That(controller.Controller.Phase, Is.EqualTo(RaceFlowPhase.Complete));
             Assert.That(screen.IsShowing, Is.False);
             Assert.That(career.State.CompletedRaceIds, Does.Contain("vertical-slice-club-circuit"));
+            Object.DestroyImmediate(go);
+        }
+
+        [Test]
+        public void MisconfiguredRadiiFallBackInsteadOfHangingTheRaceForever()
+        {
+            // Real bug found by a deep-dive review: departureRadiusM <=
+            // returnRadiusM used to mean a vehicle could never register
+            // as having "left" the start zone, so no lap could ever
+            // complete -- the race hung in Racing phase permanently
+            // with no error. Start() now detects this and falls back to
+            // a safe ratio instead. This test configures exactly that
+            // misconfiguration (both radii equal) and confirms a lap
+            // still completes rather than hanging.
+            var (go, controller, vehicle, _, _) = MakeSession(laps: 1);
+            typeof(RaceSessionController).GetField("returnRadiusM",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(controller, 5f);
+            typeof(RaceSessionController).GetField("departureRadiusM",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(controller, 5f); // misconfigured: equal to returnRadiusM
+
+            // The whole point of the fix: this misconfiguration is now
+            // loud (a real Debug.LogError), not a silent hang -- assert
+            // the warning is actually raised, not just that recovery
+            // works.
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("departureRadiusM.*must be greater than returnRadiusM"));
+
+            // Re-run Start() with the misconfigured radii now set.
+            typeof(RaceSessionController).GetMethod("Start",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(controller, null);
+            SimulateUpdate(controller, 0.1f);
+
+            DriveOneLap(vehicle, controller);
+
+            Assert.That(controller.Controller.State.LapTimes.Count, Is.EqualTo(1),
+                "a lap must still complete even with a misconfigured radius pair, not hang forever");
             Object.DestroyImmediate(go);
         }
     }
