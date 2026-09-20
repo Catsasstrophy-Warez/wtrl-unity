@@ -253,3 +253,13 @@ than assuming it.
   owner's choice — public is fine): `wtrl-unity` and `wtrl-racinggame`,
   both under the `Catsasstrophy-Warez` account. ChatGPT and Gemini can
   now clone/pull instead of working from pasted context only (Claude).
+- 2026-09-19: Ported `WTRL.Racing` from `SwiftRacer`'s `TrackAI`/
+  `RivalIntimidation`/`DriverController`/`RivalBehaviorRuntime` — AI line-
+  following, the real sourced per-rival intimidation ceilings (6 rivals,
+  every value traced to the research corpus), and the memory→intimidation
+  derivation discipline. Verified the same way as `WTRL.Vehicle`: a
+  throwaway `dotnet build`/`dotnet test` project (0 errors, 0 warnings,
+  8/8 new tests passing, 13/13 combined with `WTRL.Vehicle`'s). Also
+  committed and pushed in-progress `BlenderPipeline/` generation work in
+  the `racinggame` repo that had accumulated uncommitted since its remote
+  didn't exist yet (Claude).
