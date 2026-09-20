@@ -202,11 +202,18 @@ than assuming it.
    caveat carrying over from `SwiftRacer`. **Commit the resulting `.meta`
    files immediately** — see the GUID trap above.
 3. Run the two first assignments above.
-4. Port `WTRL.Vehicle`'s core step function — it's the one piece every
-   other module (physics-consuming or not) ultimately depends on, directly
-   or through `WTRL.Runtime`. Starting now, in parallel with 1-3.
-5. Write `CONTRACT.md` for `WTRL.Core` and `WTRL.Vehicle` before any
-   second assistant starts consuming them.
+4. ~~Port `WTRL.Vehicle`'s core step function~~ **Done** — see
+   `Assets/WrenchToRaceLegends/Vehicle/CONTRACT.md` for the full API,
+   deliberate deviations from the Swift source, and how it was actually
+   verified (real `dotnet build`/`dotnet test`, not just reading — see
+   that file for why this was possible when nothing else in this project
+   has been). Remaining vehicle-adjacent work: `WTRL.Racing` (rival AI,
+   depends on this), the content-catalog architecture question CONTRACT.md
+   flags under "deliberate deviations" #1, and re-running the same 5 tests
+   inside an actual Unity Editor once one opens this project.
+5. ~~Write `CONTRACT.md` for `WTRL.Core` and `WTRL.Vehicle`~~ **Done.**
+   `WTRL.Core`'s is short because the assembly is still empty — nothing
+   in the `WTRL.Vehicle` port needed anything from it.
 
 ## Changelog
 
@@ -214,3 +221,15 @@ than assuming it.
 - 2026-09-19: Added first-assignment briefs for ChatGPT (Rev16.1 audit)
   and Gemini (RPG spec read); noted the git-remote and meta-GUID gaps
   found on review (Claude).
+- 2026-09-19: Ported `WTRL.Vehicle` from `SwiftRacer`'s
+  `VehicleSimulation`/`DynamicsSubsystems`/`PowertrainSolver`/
+  `Definitions`/`AdvancedDefinitions` — the full 120 Hz deterministic
+  vehicle model. Verified with a real compiler for the first time in
+  this project's history (a throwaway `dotnet build`/`dotnet test`
+  project, since these files are plain C# with no `UnityEngine`
+  dependency): 0 errors, 0 warnings, 5/5 ported tests passing — one of
+  which failed on first attempt and caught a genuine mistranslation
+  (see `Vehicle/CONTRACT.md`). Removed the Swift original's dependency
+  on a global content catalog reached into from inside the physics step
+  (`tire`/`suspension` are now required parameters) — a deliberate
+  architecture change, documented in `Vehicle/CONTRACT.md` (Claude).
