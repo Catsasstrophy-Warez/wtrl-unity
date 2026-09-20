@@ -263,3 +263,17 @@ than assuming it.
   committed and pushed in-progress `BlenderPipeline/` generation work in
   the `racinggame` repo that had accumulated uncommitted since its remote
   didn't exist yet (Claude).
+- 2026-09-19: Ported `WTRL.Garage` from `SwiftRacer`'s
+  `VehicleConfigurationResolver`/`Definitions.swift` (PartDefinition,
+  InstalledComponent, BuildRecipeDefinition). This forced a real change
+  to the already-shipped `WTRL.Vehicle`: its six definition types are now
+  C# `record`s instead of plain classes, so the resolver can derive a
+  modified copy via `with` instead of mutating a shared instance in place
+  (documented in both assemblies' `CONTRACT.md`). Verified the same way
+  as the prior two ports: 0 errors, 0 warnings (after 2 nullable fixes),
+  6 new tests (5 ported + 1 new, guarding the record/`with` behavior),
+  18/18 passing combined with `WTRL.Vehicle`/`WTRL.Racing`. Also caught
+  and documented a real filename collision in the throwaway verification
+  project itself (`Vehicle/Definitions.cs` vs `Garage/Definitions.cs`
+  silently overwriting each other in a flat copy) for whoever verifies
+  the next assembly this way (Claude).

@@ -6,12 +6,15 @@ namespace WTRL.Vehicle
     // Ported from SwiftRacer/Sources/WTRLCore/Content/Definitions.swift and
     // AdvancedDefinitions.swift. These are content records (looked up by id
     // in whatever catalog owns them — no static global catalog exists in
-    // this assembly, deliberately: see CONTRACT.md). Kept as plain classes
-    // with init-only properties rather than C# structs/records-with-value-
-    // semantics, since Swift's structs here were used as reference-by-id
-    // content entries, not small hot-path value types (unlike the
-    // simulation state types in SimulationState.cs, which ARE ported as
-    // structs to match Swift's per-frame value-mutation semantics).
+    // this assembly, deliberately: see CONTRACT.md). Ported as C# `record`
+    // types (not the mutable structs SimulationState.cs uses for per-frame
+    // state): Swift's structs here were value types that callers routinely
+    // copy-and-tweak (`var vehicle = ...; vehicle.tireGripCoefficient *=
+    // 1.07`, e.g. in VehicleConfigurationResolver). A C# `record` gives the
+    // same "immutable, but cheaply derive a modified copy" shape via `with`
+    // expressions, without the reference-type aliasing risk a plain mutable
+    // class would introduce (see WTRL.Garage's resolver for the `with`
+    // usage this was added for).
 
     public enum DriveLayout { Rwd, Fwd, Awd }
 
@@ -34,7 +37,7 @@ namespace WTRL.Vehicle
         }
     }
 
-    public sealed class EngineDefinition
+    public sealed record EngineDefinition
     {
         public string Id { get; }
         public string Name { get; init; }
@@ -56,7 +59,7 @@ namespace WTRL.Vehicle
         }
     }
 
-    public sealed class TransmissionDefinition
+    public sealed record TransmissionDefinition
     {
         public string Id { get; }
         public string Name { get; init; }
@@ -74,7 +77,7 @@ namespace WTRL.Vehicle
         }
     }
 
-    public sealed class SuspensionDefinition
+    public sealed record SuspensionDefinition
     {
         public string Id { get; }
         public string Name { get; init; }
@@ -98,7 +101,7 @@ namespace WTRL.Vehicle
         }
     }
 
-    public sealed class TireDefinition
+    public sealed record TireDefinition
     {
         public string Id { get; }
         public string Name { get; init; }
@@ -124,7 +127,7 @@ namespace WTRL.Vehicle
         }
     }
 
-    public sealed class SurfaceDefinition
+    public sealed record SurfaceDefinition
     {
         public string Id { get; }
         public SurfaceKind Kind { get; init; }
@@ -140,7 +143,7 @@ namespace WTRL.Vehicle
         }
     }
 
-    public sealed class VehicleDefinition
+    public sealed record VehicleDefinition
     {
         public string Id { get; }
         public string Generation { get; init; }

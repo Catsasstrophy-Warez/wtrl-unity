@@ -74,6 +74,21 @@ mechanism `WTRLCoreTests.testFixedStepDeterminism` (and this port's own
    the type's own XML doc. This is the single most likely place a future
    bug will come from if someone ports code that assumes Swift's value
    semantics without reading this warning.
+4. **Added after `WTRL.Garage` shipped**: `EngineDefinition`,
+   `TransmissionDefinition`, `SuspensionDefinition`, `TireDefinition`,
+   `SurfaceDefinition`, `VehicleDefinition` are C# `record`s, not plain
+   classes (they were plain classes when this assembly first shipped).
+   `WTRL.Garage`'s `VehicleConfigurationResolver` needed to derive a
+   modified copy of a base definition — Swift does this by mutating a
+   local `var` copy of a value-type struct, which a plain C# class with
+   `init`-only properties can't replicate without either mutating a
+   shared instance in place or hand-rolling per-type copy constructors.
+   Records give `with`-expression copying for free while keeping
+   immutability. Re-verify anything built against these types before this
+   change if it assumed reference/class identity semantics — `record`
+   equality is structural (value-based), not reference-based, which is a
+   real behavior difference from the plain-class version if anything
+   relied on `ReferenceEquals` or dictionary-keying by object identity.
 
 ## Verification
 
