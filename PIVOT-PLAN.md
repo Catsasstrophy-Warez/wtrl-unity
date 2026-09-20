@@ -277,3 +277,16 @@ than assuming it.
   project itself (`Vehicle/Definitions.cs` vs `Garage/Definitions.cs`
   silently overwriting each other in a flat copy) for whoever verifies
   the next assembly this way (Claude).
+- 2026-09-19: Ported `WTRL.Lab` from `SwiftRacer`'s `DynoSimulation`,
+  `RunEvidence.swift` (VehicleConfigurationFingerprint, TestRunEvidence,
+  RunComparison), and `Telemetry.swift` (RuntimeTelemetryRing). Same
+  no-catalog deviation as every prior assembly. Verified: 0 errors, 0
+  warnings (after 2 nullable fixes), 6 new tests (2 ported + 4 new,
+  covering fingerprint order-independence and telemetry-ring wraparound
+  that had no direct Swift-test equivalent to port), 24/24 passing
+  combined with Vehicle/Racing/Garage. `WTRL.Vehicle`, `WTRL.Racing`,
+  `WTRL.Garage`, `WTRL.Lab` are now all ported and verified — the next
+  unblocked pieces (`World`, `Events`, `Career`, `RPG`) either need
+  fresh design (no direct Swift source) or are waiting on ChatGPT's/
+  Gemini's assignments, still with no OUTPUT files as of this entry
+  (Claude).
