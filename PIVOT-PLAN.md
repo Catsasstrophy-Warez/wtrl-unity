@@ -335,3 +335,24 @@ than assuming it.
   is now feature-complete against everything `48-RPG-SYSTEMS-SPEC.md`
   specifies, modulo the two open questions in `OUTPUT-RPG-Design.md`
   about systems that aren't in that spec at all (Claude).
+- 2026-09-19: Ported `WTRL.World` and `WTRL.Events`. `WTRL.Events` is the
+  real, working race-flow implementation from `SwiftRacer`'s
+  `RaceRuntime.swift` (`RaceRuntimeState`/`RaceRules`,
+  `DragRaceRuntimeState`/`DragRaceRules`) — explicitly the correct
+  reference this document already pointed to, distinct from the stale
+  `RaceDisciplineRuntime` lineage rejected across several uploads.
+  `WTRL.World` ports `TrackDefinition`/`FacilityDefinition`/
+  `CountyDefinition` plus the DESIGN (not the RealityKit code) of
+  Wave24's cell-based world streaming — a presentation-agnostic
+  `WorldStreamingGrid` that reports load/unload deltas without touching
+  any scene object, deliberately leaving actual content instantiation to
+  `WTRL.Runtime`. Verified: 0 errors, 0 warnings, 11 new tests (6 ported
+  term-for-term from `WTRLCoreTests`/`WTRLAdvancedTests` + 5 new, no
+  Swift-test equivalent existed for the never-wired-in streaming grid).
+  **54/54 passing project-wide across all seven real assemblies now
+  shipped**: Vehicle, Racing, Garage, Lab, RPG, World, Events. Applied
+  the Rev16.1 audit's race-flow recommendation as a deferred note rather
+  than acting on it now (layering its 8-state shape around this 4-state
+  core needs WTRL.Runtime's scene-loading/results-flow to exist first —
+  documented in Events/CONTRACT.md, not implemented speculatively)
+  (Claude).
