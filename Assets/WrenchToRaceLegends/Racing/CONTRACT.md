@@ -80,3 +80,18 @@ compile in a real Unity Editor (a cross-assembly error the throwaway
 `dotnet test` method missed entirely, since it flattens every assembly
 into one folder). See `Career/CONTRACT.md` for the full account and the
 process lesson.
+
+## AiVehicleSession — real physics under AI control (2026-09-20)
+
+`Racing/AiVehicleSession.cs` — the AI-driving analog of
+`WTRL.Runtime.WTRLRuntime`/`WTRL.UI.VehicleRuntimeController`: drives
+real `VehicleSimulation.Step` physics every call, sourcing input from
+`TrackAiDriver` instead of a keyboard. Closes the gap between two
+previously separate proofs: `VehicleRuntimeControllerTests` (real
+physics, player input, no AI) and `SampleContentTests`'s AI-line test
+(real AI perception, simplified kinematic movement instead of real
+physics). This is the first test coverage in the project exercising
+real physics under AI control end to end.
+
+Same no-catalog discipline as everything else: every definition is a
+required constructor parameter.

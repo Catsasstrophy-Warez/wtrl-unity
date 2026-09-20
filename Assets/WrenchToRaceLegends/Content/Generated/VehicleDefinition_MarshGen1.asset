@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79b9582c3d95fb47b33f289b4d249ee, type: 3}
+  m_Name: VehicleDefinition_MarshGen1
+  m_EditorClassIdentifier: WTRL.Content::WTRL.Content.VehicleDefinitionAsset
+  id: marsh-gen1
+  generation: marsh_gen1_1991
+  displayName: Marsh Constant Gen 1 (1991)
+  massKg: 1365
+  wheelbaseM: 2.53
+  engine: {fileID: 11400000, guid: 11447175a6e360b49a403729277e83ae, type: 2}
+  transmission: {fileID: 11400000, guid: c3dcf06d1ed181f4da2a3ac944bf8bc7, type: 2}
+  suspension: {fileID: 11400000, guid: 976ec119fc5a2674aabd43cf8e7da06f, type: 2}
+  tire: {fileID: 11400000, guid: 654d08d9948dac244937db02d44ed296, type: 2}
+  driveLayout: 0
+  differential: 0
+  brakeArchitecture: 2
+  brakeTorqueNm: 6500
+  aeroDragCoefficientArea: 0.75

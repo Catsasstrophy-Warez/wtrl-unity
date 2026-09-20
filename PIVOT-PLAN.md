@@ -247,7 +247,7 @@ lives in the linked file — this is a pointer, not a replacement.
 |---|---|---|
 | Core | `Core/CONTRACT.md` | One infra file: `IsExternalInit` polyfill needed by every `init`/`record`-using assembly to compile under Unity's .NET Standard 2.1 profile. No game-logic types yet. |
 | Vehicle | `Vehicle/CONTRACT.md` | No content catalog: every definition is a required caller-supplied parameter. Definitions are C# `record`s (for `with`-copying). |
-| Racing | `Racing/CONTRACT.md` | `RivalBehaviorRuntime` is a mutable class (deviation from Swift's struct) so its memory/intimidation state can be shared by reference across a session. |
+| Racing | `Racing/CONTRACT.md` | `RivalBehaviorRuntime` is a mutable class (deviation from Swift's struct) so its memory/intimidation state can be shared by reference across a session. `AiVehicleSession` now drives real `VehicleSimulation.Step` physics under AI control end to end. |
 | Garage | `Garage/CONTRACT.md` | `VehicleConfigurationResolver` uses `with`-expressions on Vehicle's records; first place the record conversion paid off. |
 | Lab | `Lab/CONTRACT.md` | `RuntimeTelemetryRing` is a fixed-capacity circular buffer, not an unbounded list — bounds memory for long play sessions. |
 | RPG | `RPG/CONTRACT.md` | New layer, no Swift source. `BuildRecipeProgress` references a Garage `BuildRecipeDefinition` by string id only, to avoid an RPG→Garage type dependency (see Career/Garage/RPG three-way tradeoff below). |
@@ -259,7 +259,7 @@ lives in the linked file — this is a pointer, not a replacement.
 | Runtime | `Runtime/CONTRACT.md` | `new FixedStepClock()` silently zero-inits instead of calling its `hz=120` constructor (struct-specific C# gotcha) — caught by `dotnet test` hanging, not by the compiler or reading. First bug this whole pass caught only by running tests. |
 | Content | `Content/CONTRACT.md` | Answers "who owns content resolution": `ScriptableObject` wrappers with direct object references, still no lookup-by-id anywhere. **Verified**: compiles clean and has real generated `.asset` instances (hero-1965). Found and fixed a real Unity bug where only the first ScriptableObject type per file gets a correct script reference — every type now lives in its own file. |
 | UI | `UI/CONTRACT.md` | First `MonoBehaviour` (`VehicleRuntimeController`) — smallest possible vertical slice (Content asset → Runtime → Transform). **Verified end-to-end** via 4 passing PlayMode tests run through a real Unity Play session. Found a real headless-batchmode limitation (simulated keyboard input doesn't survive a frame) — worked around with an `internal Tick()` test seam, not a game-code bug fix. |
-| Editor | `Editor/CONTRACT.md` | Was an empty stub; now has its first real content: `HeroContentBuilder`, which programmatically creates the hero-1965 `WTRL.Content` assets (the vehicle bug above was found while building this). |
+| Editor | `Editor/CONTRACT.md` | Was an empty stub; now has two content builders: `HeroContentBuilder` (the vehicle bug above was found while building this) and `MarshContentBuilder` (the rival roster's first real content asset). |
 
 ## Changelog
 
@@ -607,3 +607,24 @@ lives in the linked file — this is a pointer, not a replacement.
   reflects a pre-existing discrepancy in how the two methods enumerate
   tests, not a new failure). Structural validator: 16 assemblies, 54 C#
   files, no reference cycles (Claude).
+- 2026-09-20: Brought a second vehicle onto the Foundry Row circuit,
+  driven by AI under real physics (roadmap steps 8-9).
+  Added `MarshContentBuilder` (`WTRL.Editor`) — the rival roster's first
+  real `WTRL.Content` asset (`marsh-gen1`), matching the
+  `marsh_gen1_1991` Blender blockout's mass/wheelbase from the earlier
+  rival-blockout pass. Real script-reference GUIDs confirmed correct
+  (the per-file-type fix from the Hero pass holds for a second builder).
+  Added `Racing/AiVehicleSession.cs` — the AI-driving analog of
+  `WTRLRuntime`/`VehicleRuntimeController`: drives real
+  `VehicleSimulation.Step` physics every call, sourcing input from
+  `TrackAiDriver` instead of a keyboard. This closes the gap between
+  two previously separate proofs (`VehicleRuntimeControllerTests`: real
+  physics, player input, no AI; `SampleContentTests`'s AI-line test:
+  real AI perception, simplified kinematic movement, not real physics)
+  — this is the first test coverage exercising real physics under AI
+  control end to end, including a 7200-step finite-state stability
+  check mirroring `WTRL.Vehicle`'s own fuzz-input determinism
+  discipline. 3 new tests, verified via both the throwaway `dotnet
+  test` method (90/90) and the real Unity Editor Test Runner (91/91).
+  Structural validator: 16 assemblies, 57 C# files, no reference
+  cycles (Claude).

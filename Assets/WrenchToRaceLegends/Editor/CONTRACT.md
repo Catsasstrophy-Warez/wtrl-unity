@@ -53,14 +53,24 @@ the full caveat, including the still-unresolved `hero-1965` (code
 default) vs. `hero_1967` (research corpus's actual first hero
 generation) naming mismatch.
 
+## Second builder: Marsh Gen 1 (2026-09-20)
+
+`MarshContentBuilder.BuildMarshGen1()` — same pattern as
+`HeroContentBuilder`, creating the rival roster's first real content
+asset (`marsh-gen1`, matching `catalog_manifest.json`'s
+`marsh_gen1_1991` Blender blockout profile for mass/wheelbase). This is
+the first non-hero vehicle to exist as real `WTRL.Content` data, used
+by `WTRL.Racing.AiVehicleSession` (see `Racing/CONTRACT.md`) to prove
+AI-controlled real physics end to end.
+
 ## Not yet done
 
 - No validators (canon/content/serialization checks) — PIVOT-PLAN.md's
   originally-envisioned role for this assembly, still open.
 - No builders for the other assemblies' content (Garage parts, RPG
-  build recipes, World tracks/facilities, Racing rival profiles) —
-  only the hero vehicle has a builder so far.
+  build recipes, World tracks/facilities) or the remaining 27 rival
+  generations — only Hero and Marsh Gen 1 have builders so far.
 - No batch importer connecting `racinggame/ImportedVehicleCorpus`'s
-  real research-corpus JSON catalogs to these builders — `BuildHero1965`
-  hardcodes its numbers in C#, it doesn't read from any external data
+  real research-corpus JSON catalogs to these builders — both builders
+  hardcode their numbers in C#, neither reads from any external data
   source yet.
