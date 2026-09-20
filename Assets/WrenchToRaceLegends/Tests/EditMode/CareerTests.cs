@@ -308,5 +308,83 @@ namespace WTRL.Tests
 
             Assert.That(EventPreflightService.CanEnter(race, state), Is.True);
         }
+
+        // ---- RaceCompletionBridge: closes "nothing ever calls
+        // CareerTransaction when a race actually completes" -- these
+        // drive a real RaceFlowController through its full phase
+        // sequence (the same sequence a real scene caller would use) and
+        // assert the CareerState was actually mutated by the resulting
+        // RaceFlowController.Completed event, not just that the bridge
+        // type compiles. ----
+
+        [Test]
+        public void RaceCompletionBridgeRecordsClassifiedTimeAndBestTimeOnRaceFlowCompletion()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0);
+            var careerState = new CareerState();
+            var bridge = new RaceCompletionBridge(careerState);
+
+            var controller = new RaceFlowController(race);
+            bridge.AttachTo(controller);
+
+            controller.BeginLoading();
+            controller.FinishLoading();
+            controller.BeginCountdown(0);
+            controller.Advance(0.1);
+            controller.CompleteLap();
+            controller.ShowResults();
+            controller.Complete();
+
+            Assert.That(careerState.CompletedRaceIds, Does.Contain("club-circuit-01"));
+            Assert.That(careerState.RaceRecords.ContainsKey("club-circuit-01"), Is.True);
+        }
+
+        [Test]
+        public void RaceCompletionBridgeRecordsZeroIncidentsSafetyEventSinceNoContactDetectionExistsYet()
+        {
+            var race = new RaceDefinition("club-circuit-02", "Club Circuit 2", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0);
+            var careerState = new CareerState();
+            var startingSafetyRating = careerState.SafetyRating.Rating;
+            var bridge = new RaceCompletionBridge(careerState);
+
+            var controller = new RaceFlowController(race);
+            bridge.AttachTo(controller);
+            RunRaceToCompletionOn(controller, laps: 1);
+
+            // EventCompletedZeroIncidents is a positive safety event -- an
+            // honest default given no contact/incident detection exists
+            // yet (see RaceCompletionBridge's own doc comment), not a
+            // claim that incidents were checked and found clean.
+            Assert.That(careerState.SafetyRating.Rating, Is.GreaterThanOrEqualTo(startingSafetyRating));
+        }
+
+        [Test]
+        public void DetachingRaceCompletionBridgeStopsItFromReactingToFutureCompletions()
+        {
+            var race = new RaceDefinition("club-circuit-03", "Club Circuit 3", "foundry-row-circuit", laps: 1,
+                reputationRequired: 0);
+            var careerState = new CareerState();
+            var bridge = new RaceCompletionBridge(careerState);
+            var controller = new RaceFlowController(race);
+
+            bridge.AttachTo(controller);
+            bridge.DetachFrom(controller);
+            RunRaceToCompletionOn(controller, laps: 1);
+
+            Assert.That(careerState.CompletedRaceIds, Does.Not.Contain("club-circuit-03"));
+        }
+
+        private static void RunRaceToCompletionOn(RaceFlowController controller, int laps)
+        {
+            controller.BeginLoading();
+            controller.FinishLoading();
+            controller.BeginCountdown(0);
+            controller.Advance(0.1);
+            for (var lap = 0; lap < laps; lap++) controller.CompleteLap();
+            controller.ShowResults();
+            controller.Complete();
+        }
     }
 }

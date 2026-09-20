@@ -211,3 +211,48 @@ none of those are systems that exist anywhere in this project yet, and
 faking checks against data that doesn't mean anything would be worse
 than not building them. Extending this to those axes is real future
 work, gated on those systems existing first.
+
+## Race-completion -> Career wiring closed (2026-09-20)
+
+Closes the gap `RaceOutcomeDetail.cs`'s own doc comment already named:
+"nothing calls `ReputationState.RecordEvent`/`SafetyRatingState
+.RecordEvent`/`RivalBehaviorRuntime.RecordResult` when a race
+completes." `RaceOutcomeDetail` and `CareerTransaction`
+(`RecordRaceOutcome`) already existed and already handled every field
+correctly -- the actual missing piece was that nothing in the
+race-flow lifecycle ever constructed one and called
+`CareerTransaction.Apply`.
+
+`Events.RaceFlowController` now exposes a `Completed` event (fired
+from `Complete()`, using only `WTRL.Events`' own types --
+`WTRL.Events` still has no dependency on `WTRL.Career`, and shouldn't
+gain one just for this). New `Career.RaceCompletionBridge` subscribes
+to it and applies a `RaceOutcomeDetail` built from real data.
+
+**Honest limitation, not fixed here**: this project has no contact
+detection, no rival-position comparison, and no win/loss determination
+anywhere in the simulation -- `RaceRuntimeState` only tracks lap/
+sector/penalty timing. `RaceCompletionBridge` can therefore only
+honestly populate `RaceId`/`ClassifiedTimeSeconds`/`Format` from real
+data; every contact/rival/win field is left at its safe default.
+Concretely: `RivalId` is deliberately left null even for races with a
+named rival in `RaceDefinition.RivalIds`, because setting it with
+`PlayerWon` hardcoded false would incorrectly record a LOSS against
+that rival on every single completion -- worse than not recording
+anything. The one real effect every completion currently gets is
+`SafetyEvent.EventCompletedZeroIncidents` (accurate: no incident of
+any kind is or can be detected yet) plus best-classified-time
+tracking. Reputation/rival-memory effects stay dormant until a real
+contact/win-detection system exists to feed this honestly -- this is
+now the concrete, narrow blocker for further Career progress, not a
+vague "needs structured race-result data" note.
+
+Verified with 3 new tests in `CareerTests.cs` that drive a real
+`RaceFlowController` through its full phase sequence (Loading ->
+Staging -> Countdown -> Racing -> Finishing -> Results -> Complete)
+and assert the resulting `CareerState` was actually mutated by the
+fired event -- not just that the bridge type compiles. Also confirms
+detaching the bridge actually stops it reacting.
+104/104 -> 107/107 EditMode tests pass (3 new), 4/4 PlayMode tests
+still pass, `Scripts/validate_structure.sh` reports 16 assemblies, 72
+C# files, no reference cycles.

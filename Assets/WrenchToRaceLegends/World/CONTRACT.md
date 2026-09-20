@@ -111,3 +111,36 @@ length of its paired `WTRL.Racing.SampleContent` racing line (verified
 by `SampleContentTests.AllWorldTracksHaveAMatchingRacingLineWithSameIdAndAccurateLength`,
 which found and required correcting 6 of 7 initial length estimates
 after the real geometry was built), not an independent guess.
+
+## The other 7 tracks are now real Unity scenes, not just FBX files sitting unused (2026-09-20)
+
+Closes "only Foundry Row is wired into Unity" -- the other 7 tracks'
+mesh/texture assets (`Art/Tracks/*.fbx` + `Art/Tracks/Textures/*.png`)
+were generated an earlier pass but never instantiated into any scene
+anyone or any test could load. New `Editor/WorldTrackSceneBuilder.cs`
+(`Assets/WTRL/Build All Track Scenes`) builds one real scene per track
+under `Scenes/Tracks/`: the actual textured road+barrier mesh, real
+waypoint markers from `Racing.SampleContent`, a Marsh AI vehicle
+driving the line, camera, lighting, and post-processing. This is
+intentionally NOT full VerticalSlice parity (no garage/dyno/HUD/audio
+rig, no hero-vehicle career wiring) -- the minimum real scene per
+track.
+
+`redline-raceway` is deliberately excluded: it's a drag strip, and
+`Racing.SampleContent` has never authored an AI racing LINE for it
+(only `World.SampleContent` has its facility data) -- a straight
+point-to-point line isn't the same kind of content as the lap-based
+`TrackLineDefinition` every other track uses, and inventing one wasn't
+in scope. Its FBX/texture assets exist and are unused; that is an
+honest, documented gap, not fixed here.
+
+Ground per scene is a flat plane sized to that track's own real
+waypoint bounding box (via a computed `Bounds`), not a shared terrain
+system and not the Perlin-noise terrain built for VerticalSlice's
+Foundry Row scene -- a genuinely per-track ground area, not a claim of
+general terrain tech.
+
+Verified by rebuilding all 6 scenes via batchmode and grepping each
+saved `.unity` file for exactly one `_track` mesh instance and one
+`MarshVehicle` GameObject; 107/107 EditMode + 4/4 PlayMode tests still
+pass.

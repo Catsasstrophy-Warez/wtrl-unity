@@ -834,3 +834,37 @@ lives in the linked file — this is a pointer, not a replacement.
   saved scene file. Re-confirmed 104/104 EditMode + 4/4 PlayMode tests
   still pass. Structural validator: 16 assemblies, 70 C# files, no
   reference cycles (Claude).
+
+- 2026-09-20: Two concrete world-content/gameplay gaps closed after a
+  full "what's left to build" audit. (1) New `WorldTrackSceneBuilder`
+  wires the other 7 tracks' already-generated FBX/texture assets into
+  real Unity scenes under `Scenes/Tracks/` (road+barrier mesh, real
+  waypoint markers, an AI vehicle, camera, lighting) -- they existed on
+  disk but nothing had ever loaded them. redline-raceway stays excluded
+  since it's a drag strip with no authored AI racing line, documented
+  as an honest gap rather than inventing one. (2) Closed the
+  race-completion -> Career wiring gap `RaceOutcomeDetail.cs` itself
+  flagged: `RaceFlowController` now fires a `Completed` event (using
+  only `WTRL.Events`' own types, keeping the existing one-way assembly
+  dependency intact) and new `Career.RaceCompletionBridge` subscribes
+  and applies a `RaceOutcomeDetail` via the already-existing
+  `CareerTransaction.RecordRaceOutcome`. Deliberately does NOT set
+  `RivalId`/win-detection fields, since no contact/rival-position
+  system exists to back them honestly -- setting `PlayerWon=false`
+  unconditionally would incorrectly record a loss every time, which is
+  worse than not recording anything. 3 new tests drive a real
+  `RaceFlowController` through its full phase sequence and assert
+  `CareerState` was actually mutated by the fired event. 104 -> 107
+  EditMode tests pass, 4/4 PlayMode, 16 assemblies / 72 C# files, no
+  reference cycles (Claude).
+  Separately: two parallel background attempts at the vehicle-art
+  acceptance-gate backlog (wheel-arch boolean cuts, panel seam
+  geometry, collision hulls, LODs) each produced real, independently
+  verified Blender output, but against DIFFERENT source baseline
+  versions and into different, uncoordinated export folders --
+  duplicated, divergent, and not reconciled or wired into Unity's
+  actual vehicle FBX assets. Left as-is (committed locally in
+  `racinggame`, not pushed) rather than picking one arbitrarily;
+  reconciling into one canonical output and wiring it into
+  `WTRL-Unity/Assets/.../Art/Vehicles/` is real remaining work, not
+  done here (Claude).

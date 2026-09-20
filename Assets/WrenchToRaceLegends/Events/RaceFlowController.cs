@@ -1,3 +1,5 @@
+using System;
+
 namespace WTRL.Events
 {
     /// <summary>
@@ -76,9 +78,24 @@ namespace WTRL.Events
             if (Phase == RaceFlowPhase.Finishing) Phase = RaceFlowPhase.Results;
         }
 
+        /// <summary>Fired exactly once, from <see cref="Complete"/>, with
+        /// this controller's own <see cref="Definition"/>/<see cref="State"/>
+        /// -- the actual missing link every Career CONTRACT.md note (and
+        /// `RaceOutcomeDetail`'s own doc comment) flagged: nothing in the
+        /// race-flow lifecycle ever told Career a race had finished.
+        /// `WTRL.Events` still has no dependency on `WTRL.Career` (and
+        /// shouldn't gain one just for this); the event uses only this
+        /// assembly's own types, and it's `WTRL.Career` -- which already
+        /// depends on `WTRL.Events` -- that owns translating this into a
+        /// `RaceOutcomeDetail` and applying it (see
+        /// `Career.RaceCompletionBridge`).</summary>
+        public event Action<RaceDefinition, RaceRuntimeState>? Completed;
+
         public void Complete()
         {
-            if (Phase == RaceFlowPhase.Results) Phase = RaceFlowPhase.Complete;
+            if (Phase != RaceFlowPhase.Results) return;
+            Phase = RaceFlowPhase.Complete;
+            Completed?.Invoke(Definition, State);
         }
     }
 }
