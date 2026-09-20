@@ -143,3 +143,17 @@ earlier assemblies + 6 new Runtime tests), after fixing the
   wrapper yet; that integration layer (calling `Advance` from Unity's
   frame loop with `Time.deltaTime`) does not exist yet and is the
   natural next step once a Unity Editor is available to verify it in.
+
+## Device quality profiles (2026-09-20)
+
+Closes "no device quality profiles" from the Milestone M8 gap audit.
+New `DeviceQualityProfile.Apply(tier)` sets real
+`QualitySettings`/`Application.targetFrameRate` values for three fixed
+tiers (Low/Medium/High). HONEST LIMITATION: no automatic device
+benchmarking or tier detection exists -- that requires running on real
+hardware, which this environment cannot do (see PIVOT-PLAN.md's
+standing note that no device testing of any kind has occurred here).
+A caller (a settings menu, or a build-time default) picks the tier
+explicitly; this doesn't invent device detection it can't verify.
+Verified via 3 PlayMode tests asserting real `QualitySettings` state
+after each tier is applied.

@@ -868,3 +868,41 @@ lives in the linked file — this is a pointer, not a replacement.
   reconciling into one canonical output and wiring it into
   `WTRL-Unity/Assets/.../Art/Vehicles/` is real remaining work, not
   done here (Claude).
+
+- 2026-09-20: A large "do as much as possible" push against 6 named
+  gaps. **Garage**: `CanonicalBuildRecipes.All` ports all 35 real build
+  recipes from the original Swift game's `CanonicalContent.swift`
+  (0->1->35 of 35), and new `PartCatalogImporter` deserializes the
+  real 1,560-entry `master_parts_catalog.json` research corpus
+  (mirrored into `Assets/StreamingAssets/Corpus/`). Found and fixed a
+  real schema mistake mid-build (dependencies/consequences are
+  structured objects, not strings) and a real wrong assumption in the
+  verifying test (some entries are deliberately generation-less
+  "universal" parts). Deliberately does NOT fabricate Price/
+  ReputationRequired/performance-delta numbers to force this research
+  data into `PartDefinition` -- that catalog genuinely has no
+  game-balance fields, confirmed by reading real entries.
+  **Touch/tilt input**: already existed (`VehicleRuntimeController`) --
+  confirmed via code read, not re-built.
+  **Mobile camera**: `SimpleFollowCamera` gained real one-finger orbit
+  + two-finger pinch-zoom via `EnhancedTouch`, with the actual math in
+  hardware-independent methods so it's unit-testable (touch-hardware
+  simulation is known-unreliable in this project's headless PlayMode
+  runs, per an earlier finding).
+  **Results-screen UI**: new `ResultsScreen`, phase-gated to
+  `RaceFlowController.Phase == Results`, Continue button calls
+  `Complete()`. NOT yet wired into `VerticalSliceSceneBuilder`'s scene
+  (no active `RaceFlowController` there yet) -- an honest, named gap.
+  **Milestone M8**: added real, narrow-scope infrastructure for 4 of
+  its items -- `LocalizationTable` (English only, `ResultsScreen`
+  migrated as the one example), `AnalyticsConsent` (opted-out by
+  default, no real vendor SDK exists to wire to, one real call site in
+  `RaceCompletionBridge`), and `DeviceQualityProfile` (3 fixed tiers, no
+  automatic device detection -- impossible without real hardware).
+  `CareerStateHolder` now actually calls `CareerSaveCodec` on real
+  Unity lifecycle hooks (`Awake`/`OnApplicationPause`/`OnDestroy`) to a
+  real file -- closing "save/load exists but nothing calls it".
+  **Device testing** remains completely untouched: genuinely impossible
+  without real hardware, not attempted.
+  125/125 EditMode + 18/18 PlayMode tests pass (up from 107/4), 16
+  assemblies / 85 C# files, no reference cycles (Claude).

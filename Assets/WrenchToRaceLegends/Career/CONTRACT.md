@@ -256,3 +256,15 @@ detaching the bridge actually stops it reacting.
 104/104 -> 107/107 EditMode tests pass (3 new), 4/4 PlayMode tests
 still pass, `Scripts/validate_structure.sh` reports 16 assemblies, 72
 C# files, no reference cycles.
+
+## First real AnalyticsConsent call site (2026-09-20)
+
+`RaceCompletionBridge.OnRaceCompleted` now also calls
+`WTRL.Core.AnalyticsConsent.Record("race_completed", ...)` with the
+real race id/format/classified time -- the first real call site for
+the project's new opt-in analytics infrastructure (see
+`Core/AnalyticsConsent.cs`'s own doc comment for its honest scope: no
+real vendor SDK, just the consent gate + in-memory log). No-ops
+entirely unless the player has opted in (default: opted out).
+Verified with a test that opts in, drives a real race to completion,
+and asserts the real event/parameters were recorded.

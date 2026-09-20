@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using WTRL.Core;
 using WTRL.Events;
 
 namespace WTRL.Career
@@ -57,6 +59,17 @@ namespace WTRL.Career
                 format: definition.Format);
 
             CareerTransaction.Apply(new[] { CareerCommand.RecordRaceOutcome(outcome) }, _careerState);
+
+            // The first real call site for WTRL.Core.AnalyticsConsent --
+            // proves the opt-in gate is actually wired to something, not
+            // just infrastructure sitting unused. No-ops entirely unless
+            // the player has opted in (default: opted out).
+            AnalyticsConsent.Record("race_completed", new Dictionary<string, string>
+            {
+                ["race_id"] = definition.Id,
+                ["format"] = definition.Format.ToString(),
+                ["classified_time_seconds"] = state.ClassifiedTime.ToString("F2"),
+            });
         }
     }
 }

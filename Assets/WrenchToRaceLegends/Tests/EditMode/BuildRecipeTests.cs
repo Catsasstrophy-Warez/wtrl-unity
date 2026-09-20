@@ -129,5 +129,74 @@ namespace WTRL.Tests
             Assert.That(saved.IsCompleted, Is.True);
             Assert.That(saved.UnlockedTitle, Is.EqualTo("Track Regular"));
         }
+
+        // ---- CanonicalBuildRecipes: the real 35-recipe port from
+        // SwiftRacer's CanonicalContent.swift, closing "only 1 of 35
+        // spec'd recipes exists as real content". ----
+
+        [Test]
+        public void AllThirtyFiveCanonicalRecipesArePresentWithUniqueIds()
+        {
+            var recipes = CanonicalBuildRecipes.All;
+            Assert.That(recipes.Count, Is.EqualTo(35));
+
+            var ids = new System.Collections.Generic.HashSet<string>();
+            foreach (var recipe in recipes) Assert.That(ids.Add(recipe.Id), Is.True, $"duplicate id: {recipe.Id}");
+        }
+
+        [Test]
+        public void EachGenerationHasExactlyFiveRecipes()
+        {
+            var byVehicle = new System.Collections.Generic.Dictionary<string, int>();
+            foreach (var recipe in CanonicalBuildRecipes.All)
+            {
+                byVehicle.TryGetValue(recipe.VehicleId, out var count);
+                byVehicle[recipe.VehicleId] = count + 1;
+            }
+
+            Assert.That(byVehicle.Count, Is.EqualTo(7));
+            foreach (var kvp in byVehicle)
+            {
+                Assert.That(kvp.Value, Is.EqualTo(5), $"{kvp.Key} should have exactly 5 recipes");
+            }
+        }
+
+        [Test]
+        public void Hero1965HipoSpecMatchesTheRealSourcedWeightToPowerBandAndIsSatisfiableEndToEnd()
+        {
+            // hero1965-hipo-spec traces to the real 271hp HiPo figure
+            // against the real 1450kg mass (1450/271 = 5.35, inside the
+            // recipe's 5.2-5.5 band) -- exercises the ported data through
+            // the same real evaluator path as Hero1965TrackBuild above,
+            // not just a data-shape check.
+            var recipe = System.Linq.Enumerable.First(CanonicalBuildRecipes.All, r => r.Id == "hero1965-hipo-spec");
+            Assert.That(recipe.RequiredDifferentialType, Is.EqualTo("lsdRace"));
+            Assert.That(recipe.UnlockedLiveryId, Is.EqualTo("hero1965-hipo-stripe"));
+
+            var vehicle = new VehicleDefinition("hero-1965", "hero-1965", "Hero 1965", massKg: 1450, wheelbaseM: 2.6,
+                engineId: "hero-1965-hipo-engine", transmissionId: "hero-1965-gearbox", suspensionId: "hero-1965-suspension")
+            {
+                Differential = DifferentialKind.TorqueBiasing,
+            };
+            var engine = new EngineDefinition("hero-1965-hipo-engine", "Hero 1965 HiPo V8", displacementLiters: 4.7,
+                peakPowerHp: 271, peakTorqueLbFt: 314);
+
+            Assert.That(BuildRecipeEvaluator.SatisfiesTarget(recipe, vehicle, engine), Is.True);
+        }
+
+        [Test]
+        public void Hero2022VoodooAndPredatorHaveTheRealMutuallyExclusiveTransmissionRequirements()
+        {
+            // Real exclusivity from the source doc (Sec.2.7): Voodoo is
+            // manual-only, Predator is automatic/DCT-only -- transcribed,
+            // not invented, and distinct from each other.
+            var voodoo = System.Linq.Enumerable.First(CanonicalBuildRecipes.All, r => r.Id == "hero22-voodoo-spec");
+            var predator = System.Linq.Enumerable.First(CanonicalBuildRecipes.All, r => r.Id == "hero22-predator-spec");
+
+            Assert.That(voodoo.RequiredCrankType, Is.EqualTo("flatPlane"));
+            Assert.That(voodoo.RequiredTransmissionId, Is.EqualTo("tr3160-2022m"));
+            Assert.That(predator.RequiredTransmissionId, Is.EqualTo("7d"));
+            Assert.That(predator.RequiredTransmissionId, Is.Not.EqualTo(voodoo.RequiredTransmissionId));
+        }
     }
 }

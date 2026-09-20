@@ -131,3 +131,76 @@ fixture numbers already used throughout `Tests/EditMode`.
 now available as real `PartDefinition` content for
 `WTRL.UI.GarageScreen` to list rather than a UI screen inventing its
 own disconnected part list.
+
+## All 35 canonical build recipes ported (2026-09-20)
+
+Closes "only 1 of 35 spec'd recipes exists as real content" from the
+world-content gap audit. New `CanonicalBuildRecipes.All` is a straight
+transcription of the real `buildRecipes` array from the original Swift
+game's source
+(`SwiftRacer/Sources/WTRLCore/Content/CanonicalContent.swift`) -- every
+id, trim tier, weight-to-power band, and required-differential/
+transmission/crank field is copied, not invented, including that
+source's own comments about which bands are directly-sourced real
+horsepower/mass figures versus open modeling decisions (e.g. the
+mid-70s homologation rung's forced-induction path).
+
+**Honest limitation**: only `hero-1965` (via `HeroContentBuilder`) has
+a real `VehicleDefinitionAsset` in this Unity project. The other 6
+vehicle ids these recipes reference (`hero-mid70s`, `hero-late80s`,
+`hero-mid90s`, `hero-early00s`, `hero-mid10s`, `hero-2022`) have no
+built content yet -- porting the recipe DATA doesn't require their
+vehicle assets to exist, but a recipe can't be practically satisfied
+in-game until its generation's real vehicle content is built. That
+remains open, documented follow-on work.
+
+Verified: 4 new tests confirm exactly 35 recipes with unique ids,
+exactly 7 generations of exactly 5 recipes each, that
+`hero1965-hipo-spec`'s real 271hp/1450kg band is satisfiable end-to-end
+through the actual `BuildRecipeEvaluator`, and that the 2022
+generation's real Voodoo/Predator mutual-exclusivity (manual-only vs.
+automatic-only) transcribed correctly.
+
+## Real batch content importer for the master parts catalog (2026-09-20)
+
+Closes "no batch content importer connects the real JSON catalogs to
+the game". New `PartCatalogImporter` deserializes the actual
+`racinggame/ImportedVehicleCorpus/Content/Engineering/
+master_parts_catalog.json` corpus (schema `wtrl.rev24.master-parts.v1`,
+1,560 real entries across 30 families x 9 generations), mirrored into
+`Assets/StreamingAssets/Corpus/` so the importer is self-contained and
+testable without depending on a sibling repo's file layout.
+
+**Honest limitation, deliberately not hidden**: this catalog is a real
+ENGINEERING research taxonomy -- part identity, family, generation,
+origin/quality tier, research-completeness status, and real structured
+cross-family dependency/consequence rules -- NOT a game-balance
+catalog. It has no price, reputation gate, or performance-delta field
+for any entry (confirmed by reading real entries directly). So this
+importer produces `ResearchPartRecord`s, a faithful transcription of
+the real research data, and deliberately does NOT auto-convert them
+into gameplay-ready `PartDefinition`s (which require Price/
+ReputationRequired/TopSpeedDelta/AccelerationDelta) -- fabricating
+those numbers to force 1,560 entries into the gameplay type would be
+exactly the kind of invented content this project's discipline
+rejects. Balancing real gameplay numbers against this real research
+data is a separate, human-judgment-requiring pass.
+
+Found and fixed a real schema mistake while building this: an initial
+draft assumed `dependencies`/`consequences` were plain string arrays;
+deserializing the ACTUAL file threw immediately, revealing they're
+real structured objects (`ruleId`, `requiredFamily`, `threshold`,
+`hardRequirement`, etc. -- e.g. "a high-airflow intake requires higher
+fuel delivery capacity"). Fixed by modeling `PartDependencyRule`
+properly instead of loosening the type to `object`. Also found that
+some real entries (the `universal.*` ones) have a deliberately empty
+`generationId` -- a genuine "applies to every generation" sentinel,
+not a data-quality bug -- and adjusted the verifying test accordingly
+rather than silently accepting a wrong assumption.
+
+Verified against the real corpus file: entry/family/generation counts
+match the document's own declared header counts exactly (1,560 / 30 /
+9), every entry's `family` and non-empty `generationId` resolves to a
+real family/generation record, and one specific real entry
+(`hero_1967.engineblockbottomend.factory`) round-trips its exact real
+field values.

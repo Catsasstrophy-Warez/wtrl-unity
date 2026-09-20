@@ -385,3 +385,62 @@ not exist here.
 Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass, and
 `Scripts/validate_structure.sh` still reports 16 assemblies, 70 C#
 files, no reference cycles.
+
+## Results screen, mobile touch camera, and a real save pipeline (2026-09-20)
+
+Three closed gaps from a "what's left to build" audit:
+
+**Results screen**: new `ResultsScreen` renders only while a bound
+`RaceFlowController.Phase == Results` (real classified time/laps/best
+lap/penalties from the real `RaceRuntimeState`), with a Continue button
+calling the controller's own `Complete()`. Same IMGUI-placeholder
+caveat as `TelemetryHud`/`GarageScreen`/`DynoScreen`. Its
+visibility/summary logic is split out of `OnGUI` into
+`IsShowing`/`BuildSummaryText` specifically so it's testable without
+IMGUI executing (it doesn't, in headless test runs) -- 4 PlayMode
+tests drive a real `RaceFlowController` through its full phase
+sequence and assert against this screen's real state at each phase.
+NOT yet wired into `VerticalSliceSceneBuilder`'s scene -- that scene
+has no active `RaceFlowController` instance to bind to yet (free
+driving only), an honest, documented remaining integration gap.
+
+**Mobile touch camera**: `SimpleFollowCamera` gained real one-finger
+orbit (yaw/pitch) and two-finger pinch-zoom, via the New Input
+System's `EnhancedTouch` API (matching `VehicleRuntimeController`'s
+existing touch-input convention, not the legacy `Input` class). The
+orbit/zoom math lives in plain, hardware-independent methods
+(`ApplyOrbitDelta`/`ApplyPinchZoomDelta`) precisely because an earlier
+PlayMode test pass found `InputSystem.QueueStateEvent`-simulated
+touch/keyboard hardware unreliable under this project's headless
+batchmode runs -- so the real touch-reading code in `Update` stays a
+thin wrapper around these tested methods, rather than being tested via
+simulated hardware itself. 4 PlayMode tests cover yaw/pitch direction,
+pitch clamping, and zoom-distance clamping in both directions.
+
+**Real save pipeline**: `CareerStateHolder` no longer always starts a
+fresh `CareerState()` -- it now actually calls
+`WTRL.Persistence.CareerSaveCodec` on real Unity lifecycle hooks
+(`Awake` loads, `OnApplicationPause(true)`/`OnDestroy` save), to a real
+file at `Application.persistentDataPath/career_save.json`. This
+closes "the save/load round-trip exists but nothing in the Unity layer
+ever calls it" -- `CareerSaveCodec` itself was already correct and
+already tested; the gap was purely that nothing live ever invoked it.
+Required adding a `WTRL.Persistence` reference to `WTRL.UI.asmdef`
+(previously absent). 3 PlayMode tests write and read a REAL file on
+disk (not a mock filesystem), including one that destroys the
+GameObject and confirms `OnDestroy` actually persisted state before
+reading it back independently.
+
+Also added the project's first localization infrastructure
+(`WTRL.Core.LocalizationTable`, a keyed English string table with
+locale-fallback lookup) and analytics infrastructure
+(`WTRL.Core.AnalyticsConsent`, defaults opted-out, no-ops entirely
+unless opted in, no real vendor SDK wired since none exists in this
+project) -- see their own doc comments and `Career/CONTRACT.md`/
+`Runtime/CONTRACT.md` for the honest scope limits on each. `ResultsScreen`
+is the one screen migrated to call through `LocalizationTable`;
+`Career.RaceCompletionBridge` is the one real call site for
+`AnalyticsConsent.Record`.
+
+125/125 EditMode + 18/18 PlayMode tests pass, 16 assemblies / 85 C#
+files, no reference cycles.
