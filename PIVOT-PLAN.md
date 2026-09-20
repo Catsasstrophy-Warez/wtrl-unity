@@ -6,6 +6,16 @@ to Race Legends from the Swift/RealityKit `SwiftRacer` project into a full
 Blender for authored art, and development split across three AI
 assistants (Claude, ChatGPT, Gemini). Read this before touching any code.
 
+**This is the authoritative architecture document.**
+`racinggame/PROJECT-MAP-UNITY-MOBILE.md` is a companion production/
+content-pipeline document (Blender authoring pipeline, world/track
+production, milestones, performance budgets, validation strategy) — real
+and additive, but it must defer to this document on project location,
+module names, and architecture decisions. It was reconciled to do so on
+2026-09-19 after initially diverging (different project path, different
+module names, no reflection of the hub-plus-instanced-events decision).
+If you're extending either document, keep them consistent.
+
 ## Decisions already made (do not re-litigate without the project owner)
 
 1. **Start clean.** This is a new Unity project (`WTRL-Unity/`, this
@@ -233,3 +243,10 @@ than assuming it.
   on a global content catalog reached into from inside the physics step
   (`tire`/`suspension` are now required parameters) — a deliberate
   architecture change, documented in `Vehicle/CONTRACT.md` (Claude).
+- 2026-09-19: Reconciled `racinggame/PROJECT-MAP-UNITY-MOBILE.md` against
+  this document — it had been written independently (by another
+  assistant, not asked to) with a conflicting project location and
+  module names. Fixed to match this document; its genuinely additive
+  content (Blender pipeline, milestones, performance budgets, validation
+  strategy) was preserved. Added the cross-reference above so this
+  doesn't happen silently again (Claude).
