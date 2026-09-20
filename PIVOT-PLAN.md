@@ -319,3 +319,19 @@ than assuming it.
   in the design doc, not resolved unilaterally. `WTRL.Vehicle`,
   `WTRL.Racing`, `WTRL.Garage`, `WTRL.Lab`, and now `WTRL.RPG` are
   ported/designed and verified (Claude).
+- 2026-09-19: Resolved the `BuildRecipe` open architecture question from
+  `RPG/CONTRACT.md` (per your instruction to resolve it myself and
+  finish RPG): went with option 3 from `OUTPUT-RPG-Design.md`. The
+  satisfaction check (`BuildRecipeEvaluator.SatisfiesTarget`) lives in
+  `WTRL.Garage` since it needs Vehicle/Engine/Differential types; the
+  player-progression wrapper (`SavedBuildRecipe`) lives in `WTRL.RPG`
+  and references its target by string id only, so `WTRL.RPG` still has
+  no dependency on `WTRL.Garage`. This also newly enforces
+  `BuildRecipeDefinition.RequiredDifferentialType`, previously flagged
+  as sourced content nothing read anywhere — checked against the real
+  35-recipe corpus (`"lsd"`/`"lsdRace"` are the only values ever used).
+  7 new tests, 43/43 passing project-wide across all five real
+  assemblies (`Vehicle`, `Racing`, `Garage`, `Lab`, `RPG`). `WTRL.RPG`
+  is now feature-complete against everything `48-RPG-SYSTEMS-SPEC.md`
+  specifies, modulo the two open questions in `OUTPUT-RPG-Design.md`
+  about systems that aren't in that spec at all (Claude).

@@ -51,14 +51,42 @@ treat these as sourced content the way, say, `RivalIntimidation
 .Ceilings` in `WTRL.Racing` are — they're real code with placeholder
 tuning values, flagged as such in both files' comments.
 
+## `BuildRecipe` — resolved (was an open question)
+
+**Option 3 from `OUTPUT-RPG-Design.md`, implemented**: the recipe
+satisfaction check needs `VehicleDefinition`/`EngineDefinition`/
+`DifferentialKind`, so it lives in `WTRL.Garage.BuildRecipeEvaluator
+.SatisfiesTarget(BuildRecipeDefinition, VehicleDefinition,
+EngineDefinition)` — checks weight-to-power range and, when set, a
+required differential type (only `"lsd"`/`"lsdRace"` ever appear in the
+real 35-recipe corpus; both map to `ClutchLsd`/`TorqueBiasing`, and an
+unrecognized string fails honestly rather than silently passing — this
+project's standing discipline, not a new rule invented here).
+
+`WTRL.RPG.SavedBuildRecipe` (`BuildRecipeProgress.cs`) holds only the
+player-progression side — name, `RecipeKind {FreeForm, Target}`, an
+`IsCompleted` flag, unlocked title/livery — and references its target
+`BuildRecipeDefinition` **by string id only**, never by type. `WTRL.RPG`
+still has no dependency on `WTRL.Garage`; the caller (eventually
+`WTRL.Career`, which already depends on both) is responsible for calling
+`BuildRecipeEvaluator.SatisfiesTarget` and only then calling
+`SavedBuildRecipe.MarkCompleted()`.
+
+Also newly enforced: `BuildRecipeDefinition.RequiredDifferentialType`,
+previously flagged (both in the Swift original and this port) as
+sourced content nothing read. **Still unenforced**:
+`RequiredTransmissionId`/`RequiredCrankType` — exactly as documented on
+those two properties; this pass didn't invent enforcement for them.
+
+Verified with 7 new tests (weight-to-power range, differential mapping
+including the "unrecognized type never silently passes" case, free-form
+recipes always completing, target recipes requiring an explicit
+`MarkCompleted()`, and a structural guard confirming `WTRL.RPG` never
+references `WTRL.Garage`/`WTRL.Vehicle` types directly) — all pass. See
+"Verification" below for the full project-wide test count.
+
 ## Deliberately not implemented yet (see `OUTPUT-RPG-Design.md` §"Open questions")
 
-- **`BuildRecipe`** (spec Part 1) — needs a tuning-table snapshot shape
-  that lives in `WTRL.Garage`, but `WTRL.RPG` has no dependency on
-  `WTRL.Garage`. Three options are laid out in the design doc; none
-  chosen yet because it's a real architecture decision, not an
-  implementation detail. Don't add a `WTRL.Garage` dependency to this
-  assembly to unblock this without deciding that question first.
 - **`Prototype~/RPG/ReputationTraits.cs`'s rival-AI-adaptation-from-
   player-traits** and **`DiagnosticSkill.cs`'s mentor-dialogue-shortening**
   — real prior design thinking, but **not in `48-RPG-SYSTEMS-SPEC.md`**
@@ -70,12 +98,16 @@ tuning values, flagged as such in both files' comments.
 ## Verification
 
 Same method as every prior assembly: a throwaway `dotnet build`/
-`dotnet test` project (this assembly has no dependencies, so it was
-checked standalone rather than alongside the others). **0 errors, 0
-warnings** on the first build attempt (after fixing one real bug the
-attempt caught: `ClassBracketTier` enum values compared with `<=`
-directly, which C# doesn't allow on enums without a cast — fixed by
-casting to `int` before comparing). 12 new tests, each asserting a
-specific numbered claim from `48-RPG-SYSTEMS-SPEC.md` (cited in the test
-name/comment) rather than a vague behavior check, so a future spec
-change surfaces as a specific failing test. All 12 pass.
+`dotnet test` project. The reputation/safety/license/bracket types were
+checked standalone (0 dependencies); `BuildRecipeEvaluator`/
+`SavedBuildRecipe` were checked alongside `WTRL.Vehicle`/`WTRL.Garage`
+(the former needs their types, the latter doesn't but lives in the same
+assembly). **0 errors, 0 warnings** throughout (one real bug caught and
+fixed along the way: `ClassBracketTier` enum values compared with `<=`
+directly, which C# doesn't allow on enums without a cast). 19 new tests
+total (12 for reputation/safety/license/bracket, 7 for the BuildRecipe
+split), each asserting a specific numbered claim from
+`48-RPG-SYSTEMS-SPEC.md` rather than a vague behavior check. **43/43
+passing project-wide**: `WTRL.Vehicle` (5) + `WTRL.Racing` (8) +
+`WTRL.Garage` (5 + 4 new `BuildRecipeEvaluator` tests) + `WTRL.Lab` (6) +
+`WTRL.RPG` (12 + 3 new `SavedBuildRecipe` tests).

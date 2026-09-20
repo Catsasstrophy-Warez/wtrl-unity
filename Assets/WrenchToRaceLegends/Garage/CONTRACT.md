@@ -20,7 +20,20 @@ small size for the workshop system being close to done.
 `PartDefinition`, `InstalledComponent`, `BuildRecipeDefinition` (two
 fields — `RequiredTransmissionId`, `RequiredCrankType` — are sourced
 content the Swift original explicitly flags as "not yet read or enforced
-anywhere," carried over with the same honesty).
+anywhere," carried over with the same honesty; a third,
+`RequiredDifferentialType`, **is now enforced** — see below).
+
+`BuildRecipeEvaluator.SatisfiesTarget(BuildRecipeDefinition,
+VehicleDefinition, EngineDefinition)` (new — resolves the "where does
+BuildRecipe live" question from `WTRL.RPG/CONTRACT.md`/`Assignments/
+OUTPUT-RPG-Design.md`; the satisfaction check lives here since it needs
+Vehicle/Engine/Differential types, while `WTRL.RPG.SavedBuildRecipe`
+holds only the reward/progression state and references a target
+definition by string id). Checks weight-to-power range and, when the
+recipe specifies one, a required differential type — the real 35-recipe
+corpus only ever uses `"lsd"`/`"lsdRace"`, both mapped to `ClutchLsd`/
+`TorqueBiasing`; an unrecognized string fails rather than silently
+passing.
 
 `ResolvedVehicleConfiguration`, `VehicleConfigurationResolver.Resolve(
 VehicleDefinition, TransmissionDefinition, SuspensionDefinition?,
