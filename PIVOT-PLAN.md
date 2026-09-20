@@ -906,3 +906,33 @@ lives in the linked file — this is a pointer, not a replacement.
   without real hardware, not attempted.
   125/125 EditMode + 18/18 PlayMode tests pass (up from 107/4), 16
   assemblies / 85 C# files, no reference cycles (Claude).
+
+- 2026-09-20: A deep-dive architecture/quality audit (full test run
+  first: reconfirmed 125/125 EditMode + 18/18 PlayMode + 16 assemblies/
+  85 files/no cycles, unchanged), then a targeted code review looking
+  specifically for undocumented issues rather than restating known
+  CONTRACT.md gaps. Found and fixed 3 real issues: (1) `WTRL.Persistence
+  .asmdef` referenced `WTRL.World` with zero actual usage anywhere in
+  that assembly (verified via grep for both `using` and qualified
+  `WTRL.World.*` references before removing) -- removed. (2)
+  `WTRL.Career.asmdef` referenced `WTRL.Vehicle` with the only mention
+  anywhere being inside a doc comment, not code -- removed. Both
+  removals reconfirmed against a full recompile + test rerun (still
+  125/125 + 18/18) as the actual verification, not just "should be
+  safe." (3) `Career/CONTRACT.md`'s "Not yet ported / not yet designed"
+  section still listed the race-completion -> RPG/Career wiring gap as
+  open, contradicting that same file's own later "Closed a long-flagged
+  gap" and "Race-completion -> Career wiring closed" entries from
+  earlier the same day -- a real internal self-contradiction, not
+  caught when the wiring was closed because the original gap entry was
+  never struck or updated. Fixed by striking the resolved claim in
+  place with a note explaining the documentation-hygiene lesson (update
+  the original gap entry in the same pass that closes it, don't just
+  append a new entry further down). Also surfaced, not yet acted on:
+  `Garage/PartCatalogImporter`'s whole JSON-import layer has zero
+  production call sites (test-only for now, by design per its own
+  CONTRACT.md, but worth flagging as it grows); a 124-vs-125 EditMode
+  test-count curiosity (grep counts 124 `[Test]` attributes across
+  `Tests/EditMode/*.cs`, but the real Unity Test Runner has
+  consistently reported 125 across several runs this session -- not
+  re-investigated further, noted for whoever looks next) (Claude).

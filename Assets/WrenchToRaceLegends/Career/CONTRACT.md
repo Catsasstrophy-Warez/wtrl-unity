@@ -78,18 +78,28 @@ property directly. All pass.
 ## Not yet ported / not yet designed
 
 - The `.recordEvidence` gap above.
-- Reputation/safety-rating/license state currently lives in
+- ~~Reputation/safety-rating/license state currently lives in
   `CareerState` but nothing in this assembly actually calls into
   `WTRL.RPG`'s `ReputationState.RecordEvent`/`SafetyRatingState
-  .RecordEvent` when a `CareerCommand.CompleteRace`/similar fires — the
-  wiring between "a race finished" and "reputation/safety moved" is real
-  design work the spec (`48-RPG-SYSTEMS-SPEC.md`) describes but this
-  pass didn't implement, since it needs race-result detail (contact,
-  clean overtakes, etc.) that doesn't exist as structured data anywhere
-  yet.
-- Nothing in `WTRL.Racing`'s `RivalBehaviorRuntime.RecordResult` is
-  called from `CareerTransaction` either, for the same reason — a race's
-  rival-specific win/loss detail isn't part of any `CareerCommand` yet.
+  .RecordEvent`~~ — **CLOSED, 2026-09-20**: see "Closed a long-flagged
+  gap: race completion now updates RPG/Racing state" and "Race-
+  completion -> Career wiring closed" below. `RaceCompletionBridge`
+  now calls both on every real race completion via
+  `RaceFlowController.Completed`. Left in place struck-through, rather
+  than deleted, so this file's own history stays legible — this
+  section was NOT updated when that gap closed, which is itself a
+  documentation-hygiene lesson: always update/strike the original gap
+  entry in the same pass that closes it, don't just append a new
+  "closed" entry further down and leave the original claim standing.
+- ~~Nothing in `WTRL.Racing`'s `RivalBehaviorRuntime.RecordResult` is
+  called from `CareerTransaction` either~~ — **PARTIALLY CLOSED,
+  2026-09-20**: `CareerTransaction.RecordRaceOutcome` calls it whenever
+  `RaceOutcomeDetail.RivalId` is set, but `RaceCompletionBridge`
+  deliberately never sets `RivalId` (see that type's own doc comment:
+  no win/loss detection exists to back it honestly). So the mechanism
+  is wired and tested, but never actually exercised by the one real
+  caller that exists today — still effectively dormant in practice,
+  just not for the reason this stale entry claimed.
 
 ## Unity-Editor compile fix (2026-09-20)
 

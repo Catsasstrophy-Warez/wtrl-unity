@@ -1,1 +1,1 @@
-{"name":"WTRL.Persistence","rootNamespace":"WTRL.Persistence","references":["WTRL.Core","WTRL.Vehicle","WTRL.Garage","WTRL.Racing","WTRL.Career","WTRL.RPG","WTRL.World"]}
+{"name":"WTRL.Persistence","rootNamespace":"WTRL.Persistence","references":["WTRL.Core","WTRL.Vehicle","WTRL.Garage","WTRL.Racing","WTRL.Career","WTRL.RPG"]}
