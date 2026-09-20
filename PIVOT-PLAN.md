@@ -672,3 +672,41 @@ lives in the linked file — this is a pointer, not a replacement.
   The single most important next step is still the one this pass could
   not do itself: open `VerticalSlice.unity`, press Play, and look at
   what's there (Claude).
+- 2026-09-20: Visual/graphics improvement pass, per request. Both
+  vehicles in `VerticalSlice.unity` were, until this pass, literally
+  invisible empty GameObjects — closed that first. Exported real
+  geometry from `racinggame/BlenderPipeline/REFERENCE-MODELING-
+  ACCEPTANCE.md`'s own documented "accepted blockout baseline"
+  (`correct_axis_heroes/1967_crownfire_v7.blend`,
+  `correct_axis_heroes/marsh_nsx91_v6.blend` — the latest versions past
+  that doc's last-recorded v5/v4), NOT the disqualified procedural
+  fleet output the earlier rival-blockout pass used. Caught and fixed a
+  real source-data orientation bug via bounds measurement rather than
+  eyes (the source authors length along Y and height along Z; a -90°
+  correction on instantiation fixes it — see `UI/CONTRACT.md` for the
+  full diagnostic trail, including that two different FBX exporter
+  axis-remap settings produced identical (wrong) bounds, proving the
+  issue was in the source data, not the export step).
+  Added flat metallic paint materials (deep red hero, silver Marsh) —
+  genuine improvement over Unity's default missing-material magenta,
+  not a finished paint job, since the source models have no material
+  authoring yet. Added a modest URP post-processing volume (bloom,
+  contrast/saturation, vignette), warm directional light + trilight
+  ambient + distance fog, an asphalt ground material, and emissive
+  track-marker cylinders (replacing plain gray spheres).
+  Added `Racing/AiVehicleController` (MonoBehaviour wrapper around the
+  already-tested `AiVehicleSession`) so Marsh now visibly drives the
+  Foundry Row circuit under AI control — the scene has two moving cars.
+  **Caught a second real Unity bug**: loading the Marsh content asset
+  right before `EditorSceneManager.NewScene()` consistently returned
+  null for a valid asset, while the identically-loaded hero asset
+  (assigned to a component immediately) worked fine — likely Unity
+  unloading an unreferenced ScriptableObject asset across the scene
+  switch. Fixed by reloading immediately before use instead of caching
+  across the scene creation. Verified via 3 isolation attempts before
+  landing on the real fix.
+  Re-confirmed 98/98 EditMode tests passing after all of the above.
+  **None of this has been seen** — every claim is backed by a compile
+  pass, a bounds measurement, or a file diff, not a screenshot.
+  Structural validator: 16 assemblies, 70 C# files, no reference
+  cycles (Claude).

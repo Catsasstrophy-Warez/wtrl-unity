@@ -113,3 +113,65 @@ exceptions, but nobody has looked at the Garage/Dyno/HUD screens on
 screen, heard the audio, or driven with tilt on a real device. Treat
 all of it as a first functional pass awaiting real review, not a
 finished feature.
+
+## Real vehicle geometry + visual pass (2026-09-20)
+
+Both vehicles in `VerticalSlice.unity` are no longer invisible empty
+GameObjects. Exported real geometry from the project's own documented
+"accepted blockout baseline" (`racinggame/BlenderPipeline/
+REFERENCE-MODELING-ACCEPTANCE.md`), NOT the disqualified procedural
+fleet output the earlier rival-blockout pass used —
+`correct_axis_heroes/1967_crownfire_v7.blend` (97 mesh objects) and
+`correct_axis_heroes/marsh_nsx91_v6.blend` (92 mesh objects), the
+latest versions past the doc's own last-recorded v5/v4 baseline. FBX
+files live in `Assets/WrenchToRaceLegends/Art/Vehicles/`.
+
+**A real orientation bug was caught and fixed via bounds measurement,
+not eyes**: the source data authors length along its own Y axis and
+height along Z (raw bounds ~2.35 × 4.99 × 1.46 for the hero body,
+matching width/length/height in that order — not Unity's width/height
+/length). Confirmed by writing `Editor/ModelBoundsDiagnostic.cs` and
+comparing against two different FBX export axis-remap settings, which
+produced *identical* bounds either way — proving the issue was in the
+source mesh data's own axis usage, not the exporter's axis-remap
+option. Fixed with a `-90°` X-axis rotation applied to both models on
+instantiation (`VerticalSliceSceneBuilder.ModelAxisCorrection`), which
+brings the bounds into a plausible Unity-space car shape
+(width ≈ 2.35, height ≈ 1.46, length ≈ 4.99).
+
+Flat "paint" materials (deep red for hero, silver for Marsh, both
+metallic/glossy) are applied to every renderer on each model — the
+source models have no real paint/material authoring yet per
+`REFERENCE-MODELING-ACCEPTANCE.md`'s own outstanding-work list, so a
+plain solid color is a genuine improvement over Unity's default
+missing-material magenta, not a finished paint job.
+
+Also added: a modest URP post-processing volume (subtle bloom, a
+contrast/saturation lift, light vignette — safe, well-understood
+defaults, not tuned by looking at the scene), warm directional
+sunlight + trilight ambient + distance fog (replacing flat default
+white light), an asphalt-colored ground material, and emissive
+orange track-marker cylinders (replacing plain gray spheres). A new
+`AiVehicleController` (wraps `WTRL.Racing.AiVehicleSession` as a
+MonoBehaviour) drives the Marsh vehicle around the circuit under AI
+control, so the scene now has two moving cars, not one.
+
+**A second real Unity bug was found and fixed while wiring this up**:
+loading the Marsh `VehicleDefinitionAsset` via `AssetDatabase
+.LoadAssetAtPath<T>` immediately before `EditorSceneManager.NewScene`
+consistently returned null for a valid, existing, independently-
+loadable asset — while the identically-loaded hero asset (assigned to
+a component right away) worked fine. Likely explanation: creating a
+new scene lets Unity unload ScriptableObject assets nothing yet holds
+a live reference to; the hero asset survived because it was assigned
+to `controller.vehicle` immediately, the Marsh asset didn't survive
+being held as a bare local across many intervening lines. Fixed by
+reloading it right before use instead of caching it from before the
+scene switch. Confirmed via three isolation attempts (a standalone
+diagnostic method, the non-generic `LoadAssetAtPath` overload) before
+landing on the real fix — worth remembering for any future
+Editor-scripted content that loads an asset well before the scene
+that will reference it exists.
+
+**None of this has been seen.** Every claim above is backed by a
+compile pass, a bounds measurement, or a file diff — not a screenshot.

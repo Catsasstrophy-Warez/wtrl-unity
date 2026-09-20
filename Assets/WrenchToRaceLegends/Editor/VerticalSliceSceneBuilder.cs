@@ -1,6 +1,8 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using WTRL.Content;
 using WTRL.Racing;
 using WTRL.UI;
@@ -31,10 +33,23 @@ namespace WTRL.EditorTools
     {
         private const string ScenePath = "Assets/WrenchToRaceLegends/Scenes/VerticalSlice.unity";
         private const string HeroAssetPath = "Assets/WrenchToRaceLegends/Content/Generated/VehicleDefinition_Hero1965.asset";
+        private const string MarshAssetPath = "Assets/WrenchToRaceLegends/Content/Generated/VehicleDefinition_MarshGen1.asset";
+        private const string HeroModelPath = "Assets/WrenchToRaceLegends/Art/Vehicles/HeroCrownfire.fbx";
+        private const string MarshModelPath = "Assets/WrenchToRaceLegends/Art/Vehicles/MarshNsx.fbx";
+
+        // The source .blend files (racinggame/BlenderPipeline/export/
+        // correct_axis_heroes/) author length along their own Y axis and
+        // height along Z -- confirmed empirically via ModelBoundsDiagnostic
+        // (raw bounds ~2.35 x 4.99 x 1.46, matching width/length/height in
+        // that order, not Unity's width/height/length). A -90 degree
+        // rotation about X swaps those two axes into Unity's convention
+        // (Y = height, Z = length/forward).
+        private static readonly Quaternion ModelAxisCorrection = Quaternion.Euler(-90f, 0f, 0f);
 
         [MenuItem("Assets/WTRL/Build Vertical Slice Scene")]
         public static void Build()
         {
+            AssetDatabase.Refresh();
             var heroAsset = AssetDatabase.LoadAssetAtPath<VehicleDefinitionAsset>(HeroAssetPath);
             if (heroAsset == null)
             {
@@ -47,8 +62,9 @@ namespace WTRL.EditorTools
 
             BuildGround();
             BuildCircuitMarkers();
-            var garage = BuildFacilityMarker("Garage", new Vector3(-30, 0, -20), new Color(0.5f, 0.35f, 0.2f));
-            var gasStation = BuildFacilityMarker("Gas Station", new Vector3(-30, 0, 20), new Color(0.2f, 0.5f, 0.2f));
+            BuildFacilityMarker("Garage", new Vector3(-30, 0, -20), new Color(0.5f, 0.35f, 0.2f));
+            BuildFacilityMarker("Gas Station", new Vector3(-30, 0, 20), new Color(0.2f, 0.5f, 0.2f));
+            BuildPostProcessing();
 
             var careerHolder = new GameObject("CareerState").AddComponent<CareerStateHolder>();
 
@@ -56,8 +72,10 @@ namespace WTRL.EditorTools
             var controller = vehicleGo.AddComponent<VehicleRuntimeController>();
             controller.vehicle = heroAsset;
             vehicleGo.transform.position = new Vector3(
-                (float)SampleContent.FoundryRowCircuitLine().Nodes[0].X, 0.5f,
+                (float)SampleContent.FoundryRowCircuitLine().Nodes[0].X, 0.35f,
                 (float)SampleContent.FoundryRowCircuitLine().Nodes[0].Z);
+
+            AttachVehicleModel(vehicleGo, HeroModelPath, new Color(0.55f, 0.05f, 0.05f, 1f)); // deep red paint
 
             var hud = vehicleGo.AddComponent<TelemetryHud>();
             SetPrivateField(hud, "vehicle", controller);
@@ -74,16 +92,61 @@ namespace WTRL.EditorTools
 
             BuildAudioRig(vehicleGo, controller);
 
+            // Reloaded here, right before use, rather than held from
+            // before EditorSceneManager.NewScene() ran -- an earlier
+            // version loaded this alongside heroAsset up front and it
+            // reproducibly evaluated as null by the time it was used,
+            // even though the same path loaded fine everywhere else
+            // (a standalone diagnostic method, the non-generic overload,
+            // and this same call moved to just before use all confirm
+            // the asset itself is fine). Likely explanation: creating a
+            // new scene lets Unity unload ScriptableObject assets not
+            // yet referenced by anything -- heroAsset survived because it
+            // was assigned to `controller.vehicle` immediately, but
+            // marshAsset held as a bare local for many lines had nothing
+            // keeping the underlying native object alive in the interim.
+            var marshAsset = AssetDatabase.LoadAssetAtPath<VehicleDefinitionAsset>(MarshAssetPath);
+            if (marshAsset != null)
+            {
+                var rivalGo = new GameObject("MarshVehicle");
+                var rivalController = rivalGo.AddComponent<AiVehicleController>();
+                rivalController.vehicle = marshAsset;
+                var startNode = SampleContent.FoundryRowCircuitLine().Nodes[2]; // stagger the start position
+                rivalGo.transform.position = new Vector3((float)startNode.X, 0.35f, (float)startNode.Z);
+                AttachVehicleModel(rivalGo, MarshModelPath, new Color(0.85f, 0.85f, 0.9f, 1f)); // silver paint
+            }
+            else
+            {
+                Debug.LogWarning("VerticalSliceSceneBuilder: " + MarshAssetPath +
+                    " doesn't exist -- run MarshContentBuilder.BuildMarshGen1 to add the rival vehicle.");
+            }
+
             var cameraGo = new GameObject("Main Camera");
             cameraGo.tag = "MainCamera";
-            cameraGo.AddComponent<Camera>();
+            var camera = cameraGo.AddComponent<Camera>();
+            cameraGo.AddComponent<UniversalAdditionalCameraData>();
             var followCam = cameraGo.AddComponent<SimpleFollowCamera>();
             SetPrivateField(followCam, "target", vehicleGo.transform);
             cameraGo.transform.position = vehicleGo.transform.position + new Vector3(0, 4, -8);
+            camera.allowHDR = true;
 
-            var light = new GameObject("Directional Light").AddComponent<Light>();
+            var lightGo = new GameObject("Directional Light");
+            var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.transform.rotation = Quaternion.Euler(50, -30, 0);
+            light.color = new Color(1f, 0.96f, 0.88f); // warm sunlight, not neutral white
+            light.intensity = 1.3f;
+            light.shadows = LightShadows.Soft;
+            lightGo.transform.rotation = Quaternion.Euler(45, -35, 0);
+
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.55f, 0.65f, 0.85f);
+            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.45f, 0.4f);
+            RenderSettings.ambientGroundColor = new Color(0.2f, 0.18f, 0.15f);
+            RenderSettings.fog = true;
+            RenderSettings.fogColor = new Color(0.7f, 0.78f, 0.85f);
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogStartDistance = 80f;
+            RenderSettings.fogEndDistance = 300f;
 
             if (!AssetDatabase.IsValidFolder("Assets/WrenchToRaceLegends/Scenes"))
             {
@@ -93,26 +156,115 @@ namespace WTRL.EditorTools
             Debug.Log("VerticalSliceSceneBuilder: saved " + ScenePath);
         }
 
+        /// <summary>Instantiates the real Blender-modeled vehicle body
+        /// (see racinggame/BlenderPipeline/export/correct_axis_heroes/,
+        /// the project's own documented "accepted blockout baseline" --
+        /// not the disqualified procedural fleet output) as a child of
+        /// the simulation GameObject, with the axis correction and a
+        /// paint-color material applied to every renderer. The model has
+        /// no real material/texture authoring yet (see REFERENCE-
+        /// MODELING-ACCEPTANCE.md's own outstanding-work list), so a
+        /// flat paint color is a genuine improvement over Unity's default
+        /// magenta/gray missing-material look, not a finished paint job.</summary>
+        private static void AttachVehicleModel(GameObject parent, string modelPath, Color paintColor)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"VerticalSliceSceneBuilder: no model at {modelPath} -- vehicle will be invisible.");
+                return;
+            }
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent.transform);
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = ModelAxisCorrection;
+
+            var paint = new Material(Shader.Find("Universal Render Pipeline/Lit"))
+            {
+                color = paintColor,
+            };
+            paint.SetFloat("_Metallic", 0.6f);
+            paint.SetFloat("_Smoothness", 0.7f);
+
+            foreach (var renderer in instance.GetComponentsInChildren<Renderer>())
+            {
+                var materials = new Material[renderer.sharedMaterials.Length];
+                for (var i = 0; i < materials.Length; i++) materials[i] = paint;
+                renderer.sharedMaterials = materials;
+            }
+        }
+
+        /// <summary>A modest, safe-default URP post-processing stack
+        /// (subtle bloom, ACES-style contrast lift, light vignette) --
+        /// chosen because these are well-understood defaults that read
+        /// as an improvement over no post-processing in nearly any
+        /// lighting setup, not because anyone has looked at this scene
+        /// and tuned it.</summary>
+        private static void BuildPostProcessing()
+        {
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+
+            var bloom = profile.Add<Bloom>(true);
+            bloom.threshold.Override(0.9f);
+            bloom.intensity.Override(0.25f);
+
+            var colorAdjustments = profile.Add<ColorAdjustments>(true);
+            colorAdjustments.postExposure.Override(0.1f);
+            colorAdjustments.contrast.Override(8f);
+            colorAdjustments.saturation.Override(6f);
+
+            var vignette = profile.Add<Vignette>(true);
+            vignette.intensity.Override(0.2f);
+            vignette.smoothness.Override(0.4f);
+
+            if (!AssetDatabase.IsValidFolder("Assets/WrenchToRaceLegends/Scenes"))
+            {
+                AssetDatabase.CreateFolder("Assets/WrenchToRaceLegends", "Scenes");
+            }
+            AssetDatabase.CreateAsset(profile, "Assets/WrenchToRaceLegends/Scenes/VerticalSlicePostProcessing.asset");
+
+            var volumeGo = new GameObject("Global Volume");
+            var volume = volumeGo.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.profile = profile;
+        }
+
         private static void BuildGround()
         {
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Ground";
             ground.transform.position = Vector3.zero;
             ground.transform.localScale = new Vector3(20, 1, 20); // Unity plane primitive is 10x10 units
+
+            var asphalt = new Material(Shader.Find("Universal Render Pipeline/Lit"))
+            {
+                color = new Color(0.16f, 0.16f, 0.17f),
+            };
+            asphalt.SetFloat("_Smoothness", 0.25f);
+            ground.GetComponent<Renderer>().sharedMaterial = asphalt;
         }
 
         private static void BuildCircuitMarkers()
         {
             var line = SampleContent.FoundryRowCircuitLine();
             var parent = new GameObject("FoundryRowCircuitMarkers");
+
+            var markerMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"))
+            {
+                color = new Color(1f, 0.35f, 0f),
+            };
+            markerMaterial.EnableKeyword("_EMISSION");
+            markerMaterial.SetColor("_EmissionColor", new Color(1f, 0.35f, 0f) * 1.5f);
+
             for (var i = 0; i < line.Nodes.Count; i++)
             {
                 var node = line.Nodes[i];
-                var marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                var marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 marker.name = $"Node_{i}";
                 marker.transform.SetParent(parent.transform);
-                marker.transform.position = new Vector3((float)node.X, 0.5f, (float)node.Z);
-                marker.transform.localScale = Vector3.one * 1.5f;
+                marker.transform.position = new Vector3((float)node.X, 0.4f, (float)node.Z);
+                marker.transform.localScale = new Vector3(0.6f, 0.4f, 0.6f); // squat cone-like marker cylinder
+                marker.GetComponent<Renderer>().sharedMaterial = markerMaterial;
             }
         }
 
