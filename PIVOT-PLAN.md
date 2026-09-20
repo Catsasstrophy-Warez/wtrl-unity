@@ -155,16 +155,15 @@ a short note in this file's changelog (add one below) saying what
 changed and why, since they're the seams where the other three assistants'
 work actually meets.
 
-**Use git.** This folder is now a real git repository (initial commit
-`0f12ade`), so three independent assistants' work can be branched,
-reviewed and merged instead of silently overwritten. **It has no remote
-yet** — that's a hosting decision (GitHub/GitLab, private) only the
-project owner can make, since it needs an account/credentials this
-session doesn't have. Until a remote exists, ChatGPT's and Gemini's
-sessions cannot literally pull this repo; their first assignments below
-are therefore scoped to work they can do from documents alone (reading
-and reporting, not committing code), so nothing blocks on the remote
-existing yet.
+**Use git.** This folder is a real git repository with a public remote:
+**https://github.com/Catsasstrophy-Warez/wtrl-unity** (branch `main`).
+The `racinggame/` research corpus is now a separate repo too:
+**https://github.com/Catsasstrophy-Warez/wtrl-racinggame**. Both were
+public by the project owner's explicit choice. **ChatGPT and Gemini can
+now actually clone/pull these** — their assignments are no longer
+limited to document-only work for lack of somewhere to push code to.
+Update each assignment brief (or just tell them directly) to clone the
+relevant repo instead of working from pasted context alone.
 
 **Meta-file GUID trap**: the first person to open this project in an
 actual Unity Editor generates every `.meta` file's GUIDs. Whoever does
@@ -202,9 +201,9 @@ than assuming it.
 
 ## Immediate next actions
 
-1. ~~Turn `WTRL-Unity/` into a git repository~~ **Done** — initial commit
-   `0f12ade`. Push to a remote is still open (needs the project owner's
-   hosting choice).
+1. ~~Turn `WTRL-Unity/` into a git repository~~ **Done**, ~~push to a
+   remote~~ **Done** —
+   https://github.com/Catsasstrophy-Warez/wtrl-unity (public, `main`).
 2. Open the project once in an actual Unity 6000.0.58f2 Editor to let it
    generate `.meta` files and resolve the package manifest — nothing in
    this project has been opened by any Editor yet, matching this
@@ -250,3 +249,7 @@ than assuming it.
   content (Blender pipeline, milestones, performance budgets, validation
   strategy) was preserved. Added the cross-reference above so this
   doesn't happen silently again (Claude).
+- 2026-09-19: Pushed both repos to public GitHub remotes (project
+  owner's choice — public is fine): `wtrl-unity` and `wtrl-racinggame`,
+  both under the `Catsasstrophy-Warez` account. ChatGPT and Gemini can
+  now clone/pull instead of working from pasted context only (Claude).
