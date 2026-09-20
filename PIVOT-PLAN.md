@@ -257,8 +257,9 @@ lives in the linked file — this is a pointer, not a replacement.
 | Career | `Career/CONTRACT.md` | `CareerState.Clone()`/`CopyFrom()` must both list every field or transactions silently reset unlisted fields to default — caught once already; documented as a standing warning for the next field added. |
 | Persistence | `Persistence/CONTRACT.md` | Added a real (mechanical, not architectural) `WTRL.Racing` asmdef dependency. `runEvidence`/`dynoRuns`/`ghostReplays` deliberately not in the save DTO yet (flagged, not silently dropped). |
 | Runtime | `Runtime/CONTRACT.md` | `new FixedStepClock()` silently zero-inits instead of calling its `hz=120` constructor (struct-specific C# gotcha) — caught by `dotnet test` hanging, not by the compiler or reading. First bug this whole pass caught only by running tests. |
-| Content | `Content/CONTRACT.md` | New assembly answering "who owns content resolution": `ScriptableObject` wrappers with direct object references, still no lookup-by-id anywhere. Unverified — cannot be compiled outside a licensed Unity Editor. |
-| UI | `UI/CONTRACT.md` | First `MonoBehaviour` (`VehicleRuntimeController`) — smallest possible vertical slice (Content asset → Runtime → Transform). Unverified for the same reason as Content. |
+| Content | `Content/CONTRACT.md` | Answers "who owns content resolution": `ScriptableObject` wrappers with direct object references, still no lookup-by-id anywhere. **Verified**: compiles clean and has real generated `.asset` instances (hero-1965). Found and fixed a real Unity bug where only the first ScriptableObject type per file gets a correct script reference — every type now lives in its own file. |
+| UI | `UI/CONTRACT.md` | First `MonoBehaviour` (`VehicleRuntimeController`) — smallest possible vertical slice (Content asset → Runtime → Transform). **Verified end-to-end** via 4 passing PlayMode tests run through a real Unity Play session. Found a real headless-batchmode limitation (simulated keyboard input doesn't survive a frame) — worked around with an `internal Tick()` test seam, not a game-code bug fix. |
+| Editor | `Editor/CONTRACT.md` | Was an empty stub; now has its first real content: `HeroContentBuilder`, which programmatically creates the hero-1965 `WTRL.Content` assets (the vehicle bug above was found while building this). |
 
 ## Changelog
 
@@ -515,3 +516,51 @@ lives in the linked file — this is a pointer, not a replacement.
   the code is well-formed; it doesn't prove `VehicleRuntimeController`
   actually moves anything at runtime. See `UI/CONTRACT.md`'s "Manual
   steps still required" for the next, human-in-the-Editor step (Claude).
+- 2026-09-20: Closed the biggest content gap from the vehicle-asset
+  audit: added Blender blockout assets for all 28 rival vehicle
+  generations (Marsh 7, Reyes 5, Vogel 5, Kade 4, Osei 4, Duquesne 3) —
+  previously zero, despite being the actual opponent roster. Own
+  scaffold, not sourced canon (flagged in `racinggame/BlenderPipeline/
+  export/rival_blockouts_pass1/README.md`); needs a project-owner pass
+  for real names and researched dimensions.
+  Then, working through the outstanding "press Play" verification: gave
+  `WTRL.Editor` its first real content (`HeroContentBuilder`, generating
+  real hero-1965 `.asset` instances programmatically) and `WTRL.Content`
+  a `SurfaceDefinitionAsset` (the one definition type that didn't have
+  one). Building the hero assets surfaced **a real, reproducible Unity
+  Editor bug**: only the first `ScriptableObject` type declared in a
+  `.cs` file gets a correct serialized script reference via
+  `AssetDatabase.CreateAsset` in this batchmode environment — every
+  subsequent type in the same file silently gets a broken one
+  (`m_Script: {fileID: 0}`). Confirmed via isolation (a fresh asset at a
+  never-used path reproduced it too, ruling out caching). Fixed by
+  splitting every `WTRL.Content` type into its own file. Documented at
+  length in `Content/CONTRACT.md` and `Editor/CONTRACT.md`.
+  Replaced `VehicleRuntimeController`'s `[SerializeField] private`
+  vehicle field with a public one (testability, same Inspector
+  behavior) and wrote `WTRL.Tests.PlayMode.VehicleRuntimeControllerTests`
+  — the project's first PlayMode tests, run through a real
+  `Unity.exe -runTests -testPlatform PlayMode` session (not the
+  throwaway `dotnet test` method every non-Unity assembly uses, since
+  this one needs the actual engine). Found and fixed two more real
+  issues along the way, both in test code rather than game code: (1) a
+  test ordering bug (`AddComponent` invokes `Awake()` synchronously,
+  before a same-line field assignment can happen — fixed by creating
+  GameObjects inactive first); (2) a genuine environment limitation,
+  not a bug — simulating a held keyboard key via `InputSystem
+  .QueueStateEvent` doesn't survive one `FixedUpdate` in headless
+  `-nographics` batchmode, confirmed via diagnostic logging across
+  several iterations. Worked around by extracting `VehicleRuntimeController
+  .FixedUpdate`'s simulate-and-apply step into an `internal Tick(VehicleInput)`
+  method (`InternalsVisibleTo`-exposed to the test assembly) so the
+  real Content→Runtime→Transform chain is still exercised end-to-end,
+  without depending on unreliable simulated hardware input. Documented
+  the limitation in a dedicated test rather than hiding it.
+  **Result: 4/4 new PlayMode tests passing, plus all 77 EditMode tests
+  now also independently re-confirmed passing through the real Unity
+  Test Runner** (previously only ever confirmed via the throwaway
+  `dotnet test` method). This is the strongest verification state this
+  project has had at any point in its history — real compiled code,
+  real generated content, real Play-session-level test coverage, all
+  inside the actual target engine. Structural validator: 16 assemblies,
+  49 C# files, no reference cycles (Claude).

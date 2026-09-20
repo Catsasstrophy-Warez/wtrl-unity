@@ -14,7 +14,9 @@
     "WTRL.Career",
     "WTRL.Persistence",
     "WTRL.Runtime",
-    "WTRL.UI"
+    "WTRL.UI",
+    "WTRL.Content",
+    "Unity.InputSystem"
   ],
   "precompiledReferences": ["nunit.framework.dll"],
   "defineConstraints": ["UNITY_INCLUDE_TESTS"],

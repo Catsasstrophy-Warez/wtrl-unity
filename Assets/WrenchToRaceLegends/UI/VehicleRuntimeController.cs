@@ -1,8 +1,11 @@
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using WTRL.Content;
 using WTRL.Vehicle;
 using WTRL.Runtime;
+
+[assembly: InternalsVisibleTo("WTRL.Tests.PlayMode")]
 
 namespace WTRL.UI
 {
@@ -16,20 +19,23 @@ namespace WTRL.UI
     /// WTRLRuntime.Advance -&gt; transform), not a real vehicle controller.
     /// No visuals, no camera, no wheel meshes.
     ///
-    /// UNVERIFIED, like the rest of Content/ and this file's asmdef change
-    /// -- see UI/CONTRACT.md. Has never been compiled by Unity (the only
-    /// Unity install available in this environment is unlicensed). Written
-    /// carefully against the Input System 1.x API and WTRLRuntime's real
-    /// signature, but the first licensed Editor open is what actually
-    /// proves this compiles and runs.
+    /// Compiles clean in a real, licensed Unity Editor (confirmed
+    /// 2026-09-20) and is exercised end-to-end by
+    /// `WTRL.Tests.PlayMode.VehicleRuntimeControllerTests` -- see
+    /// UI/CONTRACT.md for the verification history.
     /// </summary>
     public sealed class VehicleRuntimeController : MonoBehaviour
     {
+        // Public (not private [SerializeField]) so PlayMode tests and the
+        // Editor content builder can assign it directly without reflection
+        // or an Editor-only SerializedObject dependency, while still
+        // serializing/showing in the Inspector exactly like a
+        // [SerializeField] private field would.
         [Header("Required content (no fallback -- all must be assigned)")]
-        [SerializeField] private VehicleDefinitionAsset vehicle;
+        public VehicleDefinitionAsset vehicle;
 
         [Header("Track context")]
-        [SerializeField] private double bankingDegrees;
+        public double bankingDegrees;
 
         private WTRLRuntime _runtime;
         private EngineDefinition _engine;
@@ -75,7 +81,25 @@ namespace WTRL.UI
                 if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) steering += 1;
             }
 
-            var input = new VehicleInput(throttle, brake, steering);
+            Tick(new VehicleInput(throttle, brake, steering));
+        }
+
+        /// <summary>The actual per-frame simulate-and-apply step, split
+        /// out of <see cref="FixedUpdate"/> so tests can drive it with an
+        /// explicit <see cref="VehicleInput"/> instead of a real keyboard.
+        /// This exists because a real, reproduced limitation of this
+        /// environment's `-nographics -batchmode` PlayMode test runs made
+        /// simulating a held key via `InputSystem.QueueStateEvent` +
+        /// `InputSystem.Update()` unreliable -- a queued key-down event
+        /// read back as pressed immediately, but reverted to released by
+        /// the time the next `FixedUpdate` ran, even when re-queued every
+        /// frame (see `WTRL.Tests.PlayMode.VehicleRuntimeControllerTests`'
+        /// own doc comment for the diagnostic trail). Exposed as
+        /// `internal` via `InternalsVisibleTo("WTRL.Tests.PlayMode")`
+        /// rather than `public`, since it's a test seam, not part of this
+        /// component's real API.</summary>
+        internal void Tick(VehicleInput input)
+        {
             _runtime.Advance(Time.fixedDeltaTime, input, _vehicleDef, _engine, _transmission, _tire,
                 _suspensionDef, surface: null);
 

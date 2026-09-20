@@ -8,10 +8,14 @@ an actual Unity `Transform`.
 ## Public API
 
 `VehicleRuntimeController` (`MonoBehaviour`) — takes a
-`VehicleDefinitionAsset` (see `WTRL.Content/CONTRACT.md`), constructs a
-`WTRLRuntime` in `Awake`, reads WASD/arrow keys via the new Input
-System in `FixedUpdate`, calls `WTRLRuntime.Advance`, and copies the
-resulting simulated X/Z/heading onto its own `transform`. Exposes
+`VehicleDefinitionAsset` (see `WTRL.Content/CONTRACT.md`, now a public
+field, not `[SerializeField] private`, so tests can assign it without
+reflection or an Editor-only dependency), constructs a `WTRLRuntime` in
+`Awake`, reads WASD/arrow keys via the new Input System in
+`FixedUpdate`, and delegates the actual simulate-and-apply step to
+`internal void Tick(VehicleInput)` (exposed to
+`WTRL.Tests.PlayMode` via `[InternalsVisibleTo]` — see "Verified to run"
+below for why `Tick` exists as a separate method). Exposes
 `CurrentSnapshot` for a future HUD (not wired to anything yet).
 
 Added `Unity.InputSystem` and `WTRL.Content` to this assembly's asmdef
@@ -25,32 +29,47 @@ narrowest possible slice — a box-with-a-script proving the full chain
 compiles and runs, not a playable vehicle. Adding those is the natural
 next step once this compiles cleanly.
 
-## VERIFIED to compile — not yet verified to run
+## VERIFIED to compile AND run (2026-09-20)
 
-Update: the user activated a Unity Personal license, which unblocked a
-real batchmode open (Unity 6000.6.0f1). `WTRL.UI.dll` now compiles
-cleanly with zero errors, confirming `Unity.InputSystem`'s
-`Keyboard.current`/`.isPressed` API resolved fine against the declared
-package version and that the `WTRL.Content` reference this file needs
-compiles too.
+The user activated a Unity Personal license, unblocking a real
+batchmode open (Unity 6000.6.0f1). `WTRL.UI.dll` compiles cleanly.
 
-**Not yet verified**: nobody has pressed Play. Compiling proves the
-code is well-formed C#; it does not prove the vehicle actually moves,
-that `Time.fixedDeltaTime` behaves as expected, or that the Input
-System's active-handling setting is configured correctly for
-`Keyboard.current` to return live values at runtime rather than null.
-The manual steps below are what's left to find out.
+**The end-to-end chain now has real, automated proof it runs**:
+`WTRL.Tests.PlayMode.VehicleRuntimeControllerTests` (4 tests, all
+passing via `Unity.exe -runTests -testPlatform PlayMode`) exercises
+`VehicleRuntimeController` inside an actual Play session — confirming
+`Awake`'s validation, `FixedUpdate`'s per-frame simulate-and-apply
+step, and the missing-content fail-loud path all behave correctly at
+runtime, not just at compile time.
 
-## Manual steps still required (needs a human at the Editor, pressing Play)
+**A real environment limitation was found, not a code bug**:
+simulating a held keyboard key via `InputSystem.QueueStateEvent` +
+`InputSystem.Update()` proved unreliable under this project's
+`-nographics -batchmode` PlayMode runs — a queued key-down event read
+back as pressed immediately, but had reverted to released by the very
+next `FixedUpdate`, even re-queued every frame. This looks like a
+constraint of headless/no-window Play sessions, not a bug in
+`VehicleRuntimeController`'s own keyboard-reading code. Worked around
+by splitting the per-frame simulate step into `internal void
+Tick(VehicleInput)`, which `FixedUpdate` now delegates to and which
+tests can call directly with explicit input — still exercising the
+real Content-asset → `WTRLRuntime.Advance` → `Transform` chain, just
+without depending on unreliable simulated hardware state. See
+`VehicleRuntimeControllerTests.cs`'s class doc comment and its
+`KeyboardInputSimulationIsUnreliableInHeadlessBatchmode` test (which
+documents rather than hides the limitation) for the full trail.
 
-1. Create one of each asset via `Assets > Create > WTRL > Content > …`
-   (Engine, Transmission, Suspension, Tire, then Vehicle referencing
-   the first four) and fill in real numbers — e.g. copy the
-   `hero-1965`-equivalent values used throughout this project's tests
-   (`WTRL.Tests.EditMode`'s `Make*()` helper methods are a reasonable
-   starting point for plausible values).
-2. Create a new empty scene, add an empty GameObject, attach
-   `VehicleRuntimeController`, assign the Vehicle asset, press Play.
-3. If the object moves under WASD, this is the first real end-to-end
-   proof this whole project's simulation code runs inside Unity at
-   all — worth its own PIVOT-PLAN.md changelog entry when it happens.
+**Still open**: a real, non-`-nographics` interactive Play session
+(the user actually pressing Play and watching WASD move something on
+screen) has not happened — that's the one thing this automated
+verification cannot itself confirm, since it needs an actual window
+and hardware keyboard focus.
+
+## Real content now exists
+
+`WTRL.Editor.HeroContentBuilder` (see `Editor/` — the project's first
+real editor tooling) programmatically creates a full hero-1965
+`VehicleDefinitionAsset` + its four sub-assets in
+`Content/Generated/`. Building this surfaced and fixed a real Unity
+Editor bug — see `Content/CONTRACT.md`'s "A real Unity Editor bug
+found and fixed" section.

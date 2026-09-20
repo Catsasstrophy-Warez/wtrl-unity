@@ -11,9 +11,11 @@ established.
 
 `EngineDefinitionAsset`, `TransmissionDefinitionAsset`,
 `SuspensionDefinitionAsset`, `TireDefinitionAsset`,
-`VehicleDefinitionAsset` — `ScriptableObject`s with `[CreateAssetMenu]`,
-each holding inspector-editable fields and a `ToDefinition()` method
-that produces the corresponding `WTRL.Vehicle` record.
+`SurfaceDefinitionAsset`, `VehicleDefinitionAsset` — `ScriptableObject`s
+with `[CreateAssetMenu]`, each holding inspector-editable fields and a
+`ToDefinition()` method that produces the corresponding `WTRL.Vehicle`
+record. Each type lives in its own `.cs` file (see "A real Unity Editor
+bug" below for why).
 
 ## Deliberate design choice: still no lookup-by-id
 
@@ -58,19 +60,38 @@ IsExternalInitPolyfill.cs` and the `required`-removal notes in the
 affected assemblies' `CONTRACT.md`s. This assembly itself needed no
 changes.
 
-**Still not covered by this verification**: no `.asset` instance of
-any of these `ScriptableObject`s has been created and Inspector-tested
-yet (see "Not yet done" below), so field serialization (in particular
-`double[]` for `TransmissionDefinitionAsset.ratios`) is confirmed to
-*compile* but not yet confirmed to *serialize/edit correctly* in the
-Inspector.
+## A real Unity Editor bug found and fixed (2026-09-20)
 
-## Not yet done
+Real `.asset` instances now exist (see below) — created programmatically
+via `WTRL.Editor.HeroContentBuilder` (`AssetDatabase.CreateAsset`)
+rather than hand-authored YAML, specifically to avoid shipping a
+malformed one. The first attempt surfaced a genuine, reproducible Unity
+Editor bug: **only the first `ScriptableObject` type declared in a
+`.cs` file reliably gets a correct serialized script reference
+(`m_Script`/`m_EditorClassIdentifier`) when created via
+`AssetDatabase.CreateAsset` in this environment's batchmode.** Every
+subsequent type in the same file got `m_Script: {fileID: 0}` and a
+malformed `m_EditorClassIdentifier` (missing the namespace/class dot
+separator) — confirmed reproducible across multiple runs, a full
+`AssetDatabase.Refresh()`, and even a brand-new never-used asset path,
+ruling out caching/stale-guid explanations. Confirmed the fix by
+isolating each type into its own file: every asset then serialized
+with a correct script reference. All 6 `WTRL.Content` types now live in
+their own `.cs` files for this reason — **do not consolidate them back
+into one file** without re-confirming this isn't still a problem in
+whatever Unity version is current at the time.
 
-- No actual `.asset` instances exist — creating one (e.g. "hero-1965")
-  requires the Editor's Create menu; hand-authoring a ScriptableObject
-  `.asset` YAML file was deliberately avoided in this pass rather than
-  risk shipping a malformed one the user would have to debug blind.
-- No `SurfaceDefinition` wrapper yet (not needed until a scene actually
-  varies surface — `WTRLRuntime.Advance`'s `surface` parameter is
-  nullable/optional, unlike the others).
+**Real `.asset` instances created and verified**: `Content/Generated/`
+holds a full hero-1965 configuration (Engine/Transmission/Suspension/
+Tire/Surface/Vehicle), built by `HeroContentBuilder.BuildHero1965`.
+Cross-references between them (e.g. `VehicleDefinitionAsset.engine`)
+are real Unity object-reference GUIDs, confirmed by direct inspection
+of the generated `.asset` YAML. Field values mirror the fixture data
+already used throughout `Tests/EditMode` (not sourced research-corpus
+data — see `HeroContentBuilder.cs`'s own doc comment).
+
+**Still not covered**: no Inspector-based hand-editing of these assets
+has happened (only programmatic creation), so double-click-and-tweak
+UX (in particular `TransmissionDefinitionAsset.ratios`'s `double[]`
+field) is confirmed to serialize correctly on write but not confirmed
+pleasant to edit by hand in the Inspector.

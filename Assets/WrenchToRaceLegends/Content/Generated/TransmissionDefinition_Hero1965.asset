@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c40069fd73a90f47bf5b4b13c652e90, type: 3}
+  m_Name: TransmissionDefinition_Hero1965
+  m_EditorClassIdentifier: WTRL.Content::WTRL.Content.TransmissionDefinitionAsset
+  id: hero-1965-gearbox
+  displayName: Hero 1965 4-Speed
+  ratios:
+  - 3.36
+  - 2.07
+  - 1.43
+  - 1
+  - 0.84
+  finalDrive: 3.55
+  kind: 0
+  shiftDuration: 0.28
