@@ -145,29 +145,72 @@ a short note in this file's changelog (add one below) saying what
 changed and why, since they're the seams where the other three assistants'
 work actually meets.
 
-**Use git.** This folder should become a real git repository immediately
-(it currently is not one — `SwiftRacer/`, `racinggame/`, and this new
-folder are all plain directories in this session's environment, not
-repos) so that three independent assistants' work can be branched,
-reviewed and merged instead of silently overwritten. This is the single
-most important process change this pivot needs before real parallel work
-starts.
+**Use git.** This folder is now a real git repository (initial commit
+`0f12ade`), so three independent assistants' work can be branched,
+reviewed and merged instead of silently overwritten. **It has no remote
+yet** — that's a hosting decision (GitHub/GitLab, private) only the
+project owner can make, since it needs an account/credentials this
+session doesn't have. Until a remote exists, ChatGPT's and Gemini's
+sessions cannot literally pull this repo; their first assignments below
+are therefore scoped to work they can do from documents alone (reading
+and reporting, not committing code), so nothing blocks on the remote
+existing yet.
+
+**Meta-file GUID trap**: the first person to open this project in an
+actual Unity Editor generates every `.meta` file's GUIDs. Whoever does
+this first must commit those `.meta` files *before* anyone else opens
+their own copy of the project — if two people independently generate
+GUIDs for the same assets, Unity will treat them as different objects and
+every cross-reference (prefab slots, asmdef references by GUID, scene
+object links) silently breaks on merge. This is a real, well-known Unity
+multi-person-project failure mode, not a hypothetical.
+
+## First assignments (do these before any module code)
+
+Starting to write module code in parallel before anyone has actually read
+the two things that should shape `WTRL.RPG` and the world/event layer
+would mean redoing work once that reading happens anyway. So the first
+round is reading and reporting, not coding:
+
+1. **ChatGPT — audit Rev16.1.** Full brief:
+   `Assignments/ChatGPT-Rev16.1-Audit-Brief.md`. Output: a written audit
+   report (the brief specifies where). This directly informs `WTRL.World`/
+   `WTRL.Events`, ChatGPT's eventual module ownership above, so the same
+   assistant does both.
+2. **Gemini — read the RPG spec.** Full brief:
+   `Assignments/Gemini-RPG-Spec-Brief.md`. Output: an `WTRL.RPG` design
+   doc (the brief specifies where). Directly informs `WTRL.RPG`/
+   `WTRL.Career`, Gemini's eventual ownership above.
+3. **Claude (this session)** — while those two run, the parallel task is
+   writing `CONTRACT.md` for `WTRL.Core` and `WTRL.Vehicle` and starting
+   the vehicle-simulation port, so there's a real API for either other
+   assistant to build against once their reading pass is done.
+
+Both briefs are self-contained — each assistant has no memory of this
+conversation, so each brief restates the project context it needs rather
+than assuming it.
 
 ## Immediate next actions
 
-1. Turn `WTRL-Unity/` into a git repository; push somewhere all three
-   assistants' sessions can reach.
+1. ~~Turn `WTRL-Unity/` into a git repository~~ **Done** — initial commit
+   `0f12ade`. Push to a remote is still open (needs the project owner's
+   hosting choice).
 2. Open the project once in an actual Unity 6000.0.58f2 Editor to let it
    generate `.meta` files and resolve the package manifest — nothing in
    this project has been opened by any Editor yet, matching this
    session's long-standing "verified by reading, not by compiling"
-   caveat carrying over from `SwiftRacer`.
-3. Port `WTRL.Vehicle`'s core step function first — it's the one piece
-   every other module (physics-consuming or not) ultimately depends on,
-   directly or through `WTRL.Runtime`.
-4. Write `CONTRACT.md` for `WTRL.Core` and `WTRL.Vehicle` before any
+   caveat carrying over from `SwiftRacer`. **Commit the resulting `.meta`
+   files immediately** — see the GUID trap above.
+3. Run the two first assignments above.
+4. Port `WTRL.Vehicle`'s core step function — it's the one piece every
+   other module (physics-consuming or not) ultimately depends on, directly
+   or through `WTRL.Runtime`. Starting now, in parallel with 1-3.
+5. Write `CONTRACT.md` for `WTRL.Core` and `WTRL.Vehicle` before any
    second assistant starts consuming them.
 
 ## Changelog
 
 - 2026-09-19: Initial pivot plan and project skeleton created (Claude).
+- 2026-09-19: Added first-assignment briefs for ChatGPT (Rev16.1 audit)
+  and Gemini (RPG spec read); noted the git-remote and meta-GUID gaps
+  found on review (Claude).
