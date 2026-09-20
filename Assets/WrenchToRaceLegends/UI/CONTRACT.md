@@ -224,3 +224,48 @@ saved rotation correctly.
 `ModelBoundsDiagnostic.cs` now documents this batchmode-matrix quirk
 in its own class doc, as a standing warning against reusing its
 pattern to verify a post-instantiation rotation fix in the future.
+
+## Elevation, barriers, and real texture for every track (2026-09-20)
+
+Closes the three gaps named directly in a follow-up request: no
+elevation, no barriers, no texture.
+
+**Elevation**: Whisperwood Forest Circuit and Cliffside Coastal Circuit
+now have real per-node vertical elevation (`elevationM` arrays in
+`world_tracks_manifest.json` -- a 22m crest for Whisperwood, a 24m
+single steep drop for Cliffside matching `Racing/SampleContent`'s own
+comment identifying node 4 as "the signature drop"). This is a real
+Y-axis height change baked into the ribbon mesh, confirmed via
+`ModelBoundsDiagnostic` (Y-size jumped from ~0 to ~28-30m for exactly
+these two tracks, matching the authored elevation range, while every
+other track stayed flat). **Still not a terrain/heightmap system** --
+this project has none; it's linear interpolation between hand-placed
+waypoint heights on an otherwise flat-shaded ribbon, not real ground
+geometry the vehicle could feel through suspension travel.
+
+**Barriers**: every track now has two low wall ribbons (one per edge),
+generated the same way as the road surface, with a red/white striped
+material. A single straight wall per side, not crash-tested guardrail
+geometry or a real barrier system.
+
+**Texture**: the road surface has a real procedurally-generated
+asphalt texture (subtle per-pixel noise plus a dashed white
+centerline, tiled every 8m along the track via real per-vertex UVs)
+instead of a flat color; barriers get the red/white stripe texture.
+
+**A real Blender/Unity interop bug was found and worked around while
+adding this.** Blender's FBX exporter's `embed_textures=True` produced
+a file that (confirmed via a raw byte-level string search) genuinely
+contains the texture data, but Unity's FBX importer never wired the
+resulting material's texture slot regardless of how the source image
+was packed or saved on the Blender side (tried both `Image.pack()` and
+saving to an actual PNG file first — neither worked). Rather than keep
+chasing that specific interop gap, the generator now also writes each
+texture as a plain, separately-importable PNG file
+(`Art/Tracks/Textures/`), and `VerticalSliceSceneBuilder` loads those
+directly and builds the URP/Lit materials from them in code, bypassing
+FBX texture extraction entirely. Confirmed working by grepping the
+saved scene file for the materials' actual `_BaseMap` texture GUIDs
+and matching them against the real texture assets' own GUIDs.
+
+Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass.

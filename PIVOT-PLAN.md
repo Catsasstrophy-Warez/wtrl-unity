@@ -757,3 +757,30 @@ lives in the linked file — this is a pointer, not a replacement.
   (103/103) and the real Unity Editor Test Runner (104/104 EditMode +
   4/4 PlayMode). Structural validator: 16 assemblies, 70 C# files, no
   reference cycles (Claude).
+- 2026-09-20: Closed the three gaps named directly in a follow-up
+  request: no elevation, no barriers, no texture.
+  Added real per-node elevation for Whisperwood Forest Circuit (a 22m
+  crest) and Cliffside Coastal Circuit (a 24m single steep drop at
+  node 4, matching `Racing/SampleContent`'s own "signature drop"
+  comment) via a new `elevationM` array in `world_tracks_manifest.json`
+  -- confirmed via `ModelBoundsDiagnostic` (Y-size jumped from ~0 to
+  ~28-30m for exactly these two tracks). Still not a real terrain
+  system (none exists) -- linear interpolation between hand-placed
+  waypoint heights on a flat-shaded ribbon.
+  Added barrier walls (two per track, striped material) and a real
+  procedurally-generated asphalt texture with a dashed centerline
+  (tiled via real per-vertex UVs) to every one of the 8 tracks.
+  **Found and worked around a real Blender/Unity FBX interop bug**:
+  Blender's `embed_textures=True` export genuinely contains the
+  texture data (confirmed via raw byte search of the exported file),
+  but Unity's FBX importer never wired the resulting material's
+  texture slot, regardless of how the source image was packed/saved on
+  the Blender side. Rather than keep chasing that gap, switched to
+  exporting each texture as a separate, plain PNG file and loading it
+  directly in `VerticalSliceSceneBuilder`, bypassing FBX texture
+  extraction entirely -- confirmed working by grepping the saved
+  scene's actual material texture GUIDs against the real texture
+  assets' own GUIDs, an exact match.
+  Re-confirmed 104/104 EditMode + 4/4 PlayMode tests still pass.
+  Structural validator: 16 assemblies, 70 C# files, no reference
+  cycles (Claude).

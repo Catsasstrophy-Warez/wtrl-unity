@@ -286,14 +286,29 @@ namespace WTRL.EditorTools
             instance.name = "FoundryRowCircuitTrack";
             instance.transform.position = new Vector3(0, 0.02f, 0); // lifted slightly to avoid z-fighting with the ground plane
 
-            var road = new Material(Shader.Find("Universal Render Pipeline/Lit"))
-            {
-                color = new Color(0.14f, 0.14f, 0.15f),
-            };
-            road.SetFloat("_Smoothness", 0.35f);
+            // Textures are separately-imported PNG assets, not extracted
+            // from the FBX -- Blender's `embed_textures=True` export
+            // produced a valid-looking FBX (confirmed the texture bytes
+            // are present via a raw string search of the file), but
+            // Unity's FBX importer never wired the resulting material's
+            // `mainTexture` regardless of how the image was packed/saved
+            // on the Blender side. Rather than keep chasing that
+            // interop gap, the generator now also writes each texture as
+            // a plain PNG (racinggame/BlenderPipeline/export/
+            // world_tracks/textures/), copied here and loaded directly.
+            var asphaltTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/WrenchToRaceLegends/Art/Tracks/Textures/foundry-row-circuit_asphalt.png");
+            var barrierTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/WrenchToRaceLegends/Art/Tracks/Textures/foundry-row-circuit_barrier_stripe.png");
+
             foreach (var renderer in instance.GetComponentsInChildren<Renderer>())
             {
-                renderer.sharedMaterial = road;
+                var isBarrier = renderer.gameObject.name.Contains("barrier");
+                var tex = isBarrier ? barrierTex : asphaltTex;
+                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                if (tex != null) mat.mainTexture = tex;
+                mat.SetFloat("_Smoothness", isBarrier ? 0.5f : 0.3f);
+                renderer.sharedMaterial = mat;
             }
         }
 
