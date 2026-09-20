@@ -57,10 +57,8 @@ namespace WTRL.Lab
                 samples.Add(new DynoSample(i / sampleHz, rpm, speed, torque, power));
             }
 
-            return new DynoRun
+            return new DynoRun($"dyno-{configuration.VehicleId}-baseline", configuration.VehicleId)
             {
-                Id = $"dyno-{configuration.VehicleId}-baseline",
-                VehicleId = configuration.VehicleId,
                 Samples = samples,
                 PeakPowerKw = peakP,
                 PeakTorqueNm = peakT,

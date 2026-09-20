@@ -104,20 +104,10 @@ namespace WTRL.Tests
         [Test]
         public void RunComparisonComputesMetricDeltaAcrossUnionOfKeys()
         {
-            var baseline = new TestRunEvidence
-            {
-                Kind = EvidenceKind.Dyno,
-                VehicleId = "test-vehicle",
-                ConfigurationFingerprint = "abc",
-                Metrics = new Dictionary<string, double> { ["power"] = 100 },
-            };
-            var candidate = new TestRunEvidence
-            {
-                Kind = EvidenceKind.Dyno,
-                VehicleId = "test-vehicle",
-                ConfigurationFingerprint = "def",
-                Metrics = new Dictionary<string, double> { ["power"] = 120, ["torque"] = 50 },
-            };
+            var baseline = new TestRunEvidence(EvidenceKind.Dyno, "test-vehicle", "abc",
+                new Dictionary<string, double> { ["power"] = 100 });
+            var candidate = new TestRunEvidence(EvidenceKind.Dyno, "test-vehicle", "def",
+                new Dictionary<string, double> { ["power"] = 120, ["torque"] = 50 });
             var comparison = new RunComparison(baseline, candidate);
 
             Assert.That(comparison.MetricDelta["power"], Is.EqualTo(20));

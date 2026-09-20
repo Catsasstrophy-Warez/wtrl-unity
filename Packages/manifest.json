@@ -1,13 +1,18 @@
 {
   "dependencies": {
-    "com.unity.test-framework": "1.4.5",
+    "com.unity.addressables": "2.11.2",
+    "com.unity.cinemachine": "6.6.0",
+    "com.unity.inputsystem": "1.20.0",
+    "com.unity.render-pipelines.universal": "17.6.0",
+    "com.unity.test-framework": "1.8.0",
+    "com.unity.timeline": "6.6.0",
+    "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
-    "com.unity.modules.physics": "1.0.0",
     "com.unity.modules.jsonserialize": "1.0.0",
-    "com.unity.render-pipelines.universal": "17.0.3",
-    "com.unity.inputsystem": "1.11.2",
-    "com.unity.cinemachine": "3.1.2",
-    "com.unity.addressables": "2.3.1",
-    "com.unity.timeline": "1.8.7"
+    "com.unity.modules.physics": "1.0.0",
+    "com.unity.modules.physicscore2d": "1.0.0",
+    "com.unity.modules.tetgen": "1.0.0",
+    "com.unity.modules.timelinefoundation": "1.0.0",
+    "com.unity.modules.vectorgraphics": "1.0.0"
   }
 }

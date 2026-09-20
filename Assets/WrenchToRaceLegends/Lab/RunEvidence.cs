@@ -44,11 +44,23 @@ namespace WTRL.Lab
     public sealed class TestRunEvidence
     {
         public string Id { get; init; } = Guid.NewGuid().ToString();
-        public required EvidenceKind Kind { get; init; }
-        public required string VehicleId { get; init; }
-        public required string ConfigurationFingerprint { get; init; }
-        public required IReadOnlyDictionary<string, double> Metrics { get; init; }
+        public EvidenceKind Kind { get; }
+        public string VehicleId { get; }
+        public string ConfigurationFingerprint { get; }
+        public IReadOnlyDictionary<string, double> Metrics { get; }
         public IReadOnlyList<RuntimeTelemetrySample> Telemetry { get; init; } = Array.Empty<RuntimeTelemetrySample>();
+
+        // Constructor-enforced required fields, not the C# 11 `required`
+        // keyword -- see WTRL.RPG/BuildRecipeProgress.cs's identical note
+        // for why.
+        public TestRunEvidence(EvidenceKind kind, string vehicleId, string configurationFingerprint,
+            IReadOnlyDictionary<string, double> metrics)
+        {
+            Kind = kind;
+            VehicleId = vehicleId;
+            ConfigurationFingerprint = configurationFingerprint;
+            Metrics = metrics;
+        }
     }
 
     public sealed class RunComparison

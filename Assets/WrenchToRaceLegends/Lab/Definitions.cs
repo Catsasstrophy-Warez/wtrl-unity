@@ -26,11 +26,20 @@ namespace WTRL.Lab
 
     public sealed class DynoRun
     {
-        public required string Id { get; init; }
-        public required string VehicleId { get; init; }
+        public string Id { get; }
+        public string VehicleId { get; }
         public IReadOnlyList<DynoSample> Samples { get; init; } = System.Array.Empty<DynoSample>();
         public double PeakPowerKw { get; init; }
         public double PeakTorqueNm { get; init; }
+
+        // Constructor-enforced required fields, not the C# 11 `required`
+        // keyword -- see WTRL.RPG/BuildRecipeProgress.cs's identical note
+        // for why.
+        public DynoRun(string id, string vehicleId)
+        {
+            Id = id;
+            VehicleId = vehicleId;
+        }
     }
 
     public sealed class DynoConfiguration

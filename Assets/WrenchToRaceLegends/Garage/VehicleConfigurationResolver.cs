@@ -5,9 +5,18 @@ namespace WTRL.Garage
 {
     public sealed class ResolvedVehicleConfiguration
     {
-        public required VehicleDefinition Vehicle { get; init; }
-        public required TransmissionDefinition Transmission { get; init; }
+        public VehicleDefinition Vehicle { get; }
+        public TransmissionDefinition Transmission { get; }
         public SuspensionDefinition? Suspension { get; init; }
+
+        // Constructor-enforced required fields, not the C# 11 `required`
+        // keyword -- see WTRL.RPG/BuildRecipeProgress.cs's identical note
+        // for why.
+        public ResolvedVehicleConfiguration(VehicleDefinition vehicle, TransmissionDefinition transmission)
+        {
+            Vehicle = vehicle;
+            Transmission = transmission;
+        }
     }
 
     /// <summary>
@@ -60,7 +69,7 @@ namespace WTRL.Garage
                 }
             }
 
-            return new ResolvedVehicleConfiguration { Vehicle = vehicle, Transmission = transmission, Suspension = suspension };
+            return new ResolvedVehicleConfiguration(vehicle, transmission) { Suspension = suspension };
         }
     }
 }

@@ -25,39 +25,32 @@ narrowest possible slice — a box-with-a-script proving the full chain
 compiles and runs, not a playable vehicle. Adding those is the natural
 next step once this compiles cleanly.
 
-## UNVERIFIED — same caveat as WTRL.Content
+## VERIFIED to compile — not yet verified to run
 
-This file references `UnityEngine`/`UnityEngine.InputSystem`, so it
-cannot be verified via this project's usual throwaway `dotnet
-build`/`dotnet test` method. It has never been compiled. See
-`Content/CONTRACT.md` for the full explanation of why (Unity installed
-in this environment is unlicensed; a batchmode open attempt hung
-waiting for interactive license activation and was killed rather than
-left running).
+Update: the user activated a Unity Personal license, which unblocked a
+real batchmode open (Unity 6000.6.0f1). `WTRL.UI.dll` now compiles
+cleanly with zero errors, confirming `Unity.InputSystem`'s
+`Keyboard.current`/`.isPressed` API resolved fine against the declared
+package version and that the `WTRL.Content` reference this file needs
+compiles too.
 
-Known things that need real-Editor confirmation, not assumed correct:
-- The exact `Keyboard.current` / `.isPressed` API surface, which
-  depends on the Input System package version actually resolving
-  (`com.unity.inputsystem: 1.11.2` is declared in `Packages/
-  manifest.json` but has never been fetched/resolved by an Editor).
-- Whether the project's Input System is even configured for the "new"
-  backend vs. "both" — if `Player Settings > Active Input Handling` is
-  still on the legacy-only default, this script will compile but the
-  `Keyboard.current` API will still work (that API exists regardless of
-  the active handling setting for reading, though events/callbacks
-  differ) -- worth a first-run sanity check regardless.
+**Not yet verified**: nobody has pressed Play. Compiling proves the
+code is well-formed C#; it does not prove the vehicle actually moves,
+that `Time.fixedDeltaTime` behaves as expected, or that the Input
+System's active-handling setting is configured correctly for
+`Keyboard.current` to return live values at runtime rather than null.
+The manual steps below are what's left to find out.
 
-## Manual steps still required (cannot be done without a licensed Editor)
+## Manual steps still required (needs a human at the Editor, pressing Play)
 
-1. Open the project once and confirm zero Console errors.
-2. Create one of each asset via `Assets > Create > WTRL > Content > …`
+1. Create one of each asset via `Assets > Create > WTRL > Content > …`
    (Engine, Transmission, Suspension, Tire, then Vehicle referencing
    the first four) and fill in real numbers — e.g. copy the
    `hero-1965`-equivalent values used throughout this project's tests
    (`WTRL.Tests.EditMode`'s `Make*()` helper methods are a reasonable
    starting point for plausible values).
-3. Create a new empty scene, add an empty GameObject, attach
+2. Create a new empty scene, add an empty GameObject, attach
    `VehicleRuntimeController`, assign the Vehicle asset, press Play.
-4. If it compiles and the object moves under WASD, this is the first
-   real end-to-end proof this whole project's simulation code runs
-   inside Unity at all.
+3. If the object moves under WASD, this is the first real end-to-end
+   proof this whole project's simulation code runs inside Unity at
+   all — worth its own PIVOT-PLAN.md changelog entry when it happens.

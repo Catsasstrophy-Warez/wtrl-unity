@@ -24,12 +24,25 @@ namespace WTRL.RPG
     /// moment they're saved.</summary>
     public sealed class SavedBuildRecipe
     {
-        public required string Name { get; init; }
-        public required RecipeKind Kind { get; init; }
+        public string Name { get; }
+        public RecipeKind Kind { get; }
         public string? TargetRecipeDefinitionId { get; init; }
         public string? UnlockedTitle { get; init; }
         public string? UnlockedLiveryId { get; init; }
         public bool IsCompleted { get; private set; }
+
+        // Constructor-enforced required fields, not the C# 11 `required`
+        // keyword: Unity's per-assembly `.rsp` language-version override
+        // (tried first) did not take effect for this assembly in a real
+        // Editor compile, for reasons not fully understood -- rather than
+        // depend on an unverified compiler-plumbing workaround, this
+        // matches the constructor-required-plus-init-optional pattern
+        // WTRL.Vehicle's `Definitions.cs` already established project-wide.
+        private SavedBuildRecipe(string name, RecipeKind kind)
+        {
+            Name = name;
+            Kind = kind;
+        }
 
         /// <summary>The caller (eventually WTRL.Career, which can see both
         /// WTRL.Garage's evaluator and this type) is responsible for
@@ -43,14 +56,12 @@ namespace WTRL.RPG
         }
 
         public static SavedBuildRecipe CreateFreeForm(string name) =>
-            new SavedBuildRecipe { Name = name, Kind = RecipeKind.FreeForm, IsCompleted = true };
+            new SavedBuildRecipe(name, RecipeKind.FreeForm) { IsCompleted = true };
 
         public static SavedBuildRecipe CreateTarget(string name, string targetRecipeDefinitionId,
             string? unlockedTitle = null, string? unlockedLiveryId = null) =>
-            new SavedBuildRecipe
+            new SavedBuildRecipe(name, RecipeKind.Target)
             {
-                Name = name,
-                Kind = RecipeKind.Target,
                 TargetRecipeDefinitionId = targetRecipeDefinitionId,
                 UnlockedTitle = unlockedTitle,
                 UnlockedLiveryId = unlockedLiveryId,

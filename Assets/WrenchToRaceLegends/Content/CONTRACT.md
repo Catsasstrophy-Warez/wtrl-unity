@@ -35,35 +35,35 @@ or similar) is wanted later, it belongs in a separate loader that
 *produces* one of these direct references — not a change to this
 assembly's shape.
 
-## UNVERIFIED — no dotnet-based verification is possible here
+## VERIFIED — compiles clean in a real, licensed Unity Editor
 
-Every prior WTRL assembly (Vehicle through Runtime) was verified via a
-throwaway `dotnet build`/`dotnet test` project, because none of them
-reference `UnityEngine`. This assembly's entire purpose is Unity
-integration (`ScriptableObject`, `[CreateAssetMenu]`), so that method
-does not apply — there is no way to compile or test this code outside
-an actual Unity Editor.
+Update: the user activated a Unity Personal license after this
+CONTRACT.md was first written, unblocking the batchmode-open attempt
+that had previously hung indefinitely. `Unity.exe -batchmode -nographics
+-quit` against Unity 6000.6.0f1 (the project's original pin,
+6000.0.58f2, is not installed in this environment; the project was
+retargeted to 6000.6.0f1) now completes successfully: `WTRL.Content.dll`
+is produced in `Library/ScriptAssemblies`, and every `.meta` file this
+assembly needed was generated for the first time.
 
-**This code has never been compiled by anything.** The only Unity
-Editor installations available in this environment (6000.6.0f1,
-6000.7.0a6 — neither matches the project's pinned 6000.0.58f2, which
-is not installed here) are unlicensed; a batchmode open attempt during
-this session hung indefinitely at
-`[Licensing::Module] Licensing is not yet initialized.` waiting for a
-license client that requires the user's own interactive sign-in, which
-cannot be done on their behalf. The process was killed rather than left
-hanging.
+Two real compile errors surfaced project-wide on this first successful
+open (not specific to this assembly, but Content and everything
+depending on it couldn't build until they were fixed — see
+`Core/CONTRACT.md` and the individual `CONTRACT.md`s for `Career`,
+`Garage`, `Lab`, `RPG`): a missing `IsExternalInit` polyfill (needed for
+every `init`/`record` in the project under Unity's .NET Standard 2.1
+profile) and the C# 11 `required` keyword not being available under
+Unity's default language version — both fixed; see `Core/
+IsExternalInitPolyfill.cs` and the `required`-removal notes in the
+affected assemblies' `CONTRACT.md`s. This assembly itself needed no
+changes.
 
-**Before trusting this code**, the user (or a future session with a
-licensed Editor) must open the project and confirm the Console shows
-zero compile errors. Likely candidates for a first-compile fix, since
-this was written without ever seeing Unity's actual compiler diagnostics:
-- `double` fields showing as edit boxes rather than sliders in the
-  Inspector is expected (no `[Range]` attributes were added — this is
-  intentionally left for whoever tunes these values by feel).
-- `double[]` (used for `TransmissionDefinitionAsset.ratios`) should
-  serialize fine as a native Unity array type, but has not been
-  Inspector-tested.
+**Still not covered by this verification**: no `.asset` instance of
+any of these `ScriptableObject`s has been created and Inspector-tested
+yet (see "Not yet done" below), so field serialization (in particular
+`double[]` for `TransmissionDefinitionAsset.ratios`) is confirmed to
+*compile* but not yet confirmed to *serialize/edit correctly* in the
+Inspector.
 
 ## Not yet done
 

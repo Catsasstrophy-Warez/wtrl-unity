@@ -90,3 +90,31 @@ property directly. All pass.
 - Nothing in `WTRL.Racing`'s `RivalBehaviorRuntime.RecordResult` is
   called from `CareerTransaction` either, for the same reason — a race's
   rival-specific win/loss detail isn't part of any `CareerCommand` yet.
+
+## Unity-Editor compile fix (2026-09-20)
+
+The first real, licensed Unity Editor open of this project (6000.6.0f1)
+surfaced two classes of compile error every prior `dotnet build`/
+`dotnet test` verification pass couldn't catch, since neither depends
+on `UnityEngine`:
+
+1. Missing `System.Runtime.CompilerServices.IsExternalInit` (needed for
+   every `init` accessor/`record`) — fixed once, project-wide, via
+   `WTRL.Core/IsExternalInitPolyfill.cs`.
+2. This assembly's use of the C# 11 `required` keyword failed with
+   "Feature 'required members' is not available in C# 9.0." An attempt
+   to fix this via a per-assembly `<AssemblyName>.rsp` file (Unity's
+   documented mechanism for per-assembly compiler args) did not take
+   effect in a real Editor compile, for reasons not fully diagnosed —
+   see `Core/IsExternalInitPolyfill.cs`'s doc comment for the full
+   account. Rather than ship another speculative polyfill on top of an
+   unverified compiler-plumbing workaround, every `required` property in
+   this assembly was converted to a constructor parameter (with any
+   remaining optional properties staying `init`-only) — the same
+   pattern `WTRL.Vehicle/Definitions.cs` already established. Call sites
+   updated accordingly.
+
+Verified: `dotnet test` (76/76, unchanged) confirms this refactor
+didn't change behavior, and this assembly's `.dll` now also compiles
+cleanly inside a real, licensed Unity Editor — the first time anything
+in this project has been proven to build there.

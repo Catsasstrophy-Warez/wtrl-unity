@@ -245,7 +245,7 @@ lives in the linked file — this is a pointer, not a replacement.
 
 | Assembly | CONTRACT.md | Key decision / deviation |
 |---|---|---|
-| Core | `Core/CONTRACT.md` | Empty — no assembly has needed anything from it yet. |
+| Core | `Core/CONTRACT.md` | One infra file: `IsExternalInit` polyfill needed by every `init`/`record`-using assembly to compile under Unity's .NET Standard 2.1 profile. No game-logic types yet. |
 | Vehicle | `Vehicle/CONTRACT.md` | No content catalog: every definition is a required caller-supplied parameter. Definitions are C# `record`s (for `with`-copying). |
 | Racing | `Racing/CONTRACT.md` | `RivalBehaviorRuntime` is a mutable class (deviation from Swift's struct) so its memory/intimidation state can be shared by reference across a session. |
 | Garage | `Garage/CONTRACT.md` | `VehicleConfigurationResolver` uses `with`-expressions on Vehicle's records; first place the record conversion paid off. |
@@ -475,3 +475,43 @@ lives in the linked file — this is a pointer, not a replacement.
   the now-thirteen `CONTRACT.md` files have a single one-line-per-
   assembly pointer instead of requiring a full read of each to answer
   "what did we decide and why" (Claude).
+- 2026-09-20: **The Unity license blocker is resolved** — the user
+  activated a Unity Personal license, which unblocked the batchmode
+  open that had previously hung indefinitely. This is a real milestone:
+  the first time in this entire project's history (spanning both the
+  Swift/RealityKit era, which was never compiled by anything, and this
+  Unity pivot) that any of this code has been opened and compiled by
+  the actual engine it's meant to run in. The project was retargeted
+  from its original pin (6000.0.58f2, not installed in this
+  environment) to 6000.6.0f1, the closest available install.
+  Two real, project-wide compile errors surfaced, both invisible to
+  every prior `dotnet build`/`dotnet test` verification pass because
+  neither depends on `UnityEngine`: (1) missing `IsExternalInit` (every
+  `init`/`record` in the project needs it under Unity's .NET Standard
+  2.1 profile — fixed once, project-wide, via a new `WTRL.Core/
+  IsExternalInitPolyfill.cs`), and (2) the C# 11 `required` keyword not
+  being available under Unity's default language version. A per-
+  assembly `.rsp` language-version override (Unity's documented
+  mechanism) was tried first for (2) but did not take effect in a real
+  compile for reasons not fully diagnosed even after a full `Library/
+  Bee` cache wipe; rather than layer a second speculative workaround on
+  top of an already-unverified one, every `required` usage in `Career`,
+  `Garage`, `Lab`, and `RPG` was converted to the constructor-required-
+  plus-init-optional pattern `Vehicle/Definitions.cs` already
+  established, and a stray raw-string-literal test fixture (also a C#
+  11 feature) and an NUnit `Has.Exactly(n).Items` constraint not
+  supported by the bundled Test Framework version were fixed alongside.
+  Re-ran the throwaway `dotnet test` suite after these edits to confirm
+  no behavioral regressions (still 76/76 passing) before re-attempting
+  the Editor compile.
+  **Result: all 15 gameplay assemblies (plus the still-empty `WTRL.
+  Editor`) now compile with zero errors in a real, licensed Unity
+  Editor**, and every `.meta` file this project needed was generated
+  for the first time. `WTRL.Content` and `WTRL.UI` (added in the
+  previous entry, previously marked UNVERIFIED since they reference
+  `UnityEngine` and can't go through the `dotnet` verification path)
+  are now confirmed to compile too — see their updated `CONTRACT.md`s.
+  **Still not verified**: nobody has pressed Play yet. Compiling proves
+  the code is well-formed; it doesn't prove `VehicleRuntimeController`
+  actually moves anything at runtime. See `UI/CONTRACT.md`'s "Manual
+  steps still required" for the next, human-in-the-Editor step (Claude).

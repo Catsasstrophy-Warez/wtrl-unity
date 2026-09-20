@@ -44,7 +44,7 @@ namespace WTRL.Tests
             };
             state.VehicleHistory["hero-1965"] = new()
             {
-                new VehicleHistoryEvent { Kind = "dyno", Summary = "Baseline pull" },
+                new VehicleHistoryEvent("dyno", "Baseline pull"),
             };
 
             var decoded = CareerSaveCodec.Decode(CareerSaveCodec.Encode(state));
@@ -71,7 +71,7 @@ namespace WTRL.Tests
         [Test]
         public void LegacyHeroGen1VehicleIdIsRenamedOnDecode()
         {
-            var json = """{"SelectedVehicleId":"hero-gen1"}""";
+            var json = "{\"SelectedVehicleId\":\"hero-gen1\"}";
             var decoded = CareerSaveCodec.Decode(json);
             Assert.That(decoded.SelectedVehicleId, Is.EqualTo("hero-1965"));
         }

@@ -19,9 +19,18 @@ namespace WTRL.Career
     {
         public string Id { get; init; } = Guid.NewGuid().ToString();
         public double SimulationSeconds { get; init; }
-        public required string Kind { get; init; }
-        public required string Summary { get; init; }
+        public string Kind { get; }
+        public string Summary { get; }
         public string? ConfigurationFingerprint { get; init; }
+
+        // Constructor-enforced required fields, not the C# 11 `required`
+        // keyword -- see WTRL.RPG/BuildRecipeProgress.cs's identical note
+        // for why.
+        public VehicleHistoryEvent(string kind, string summary)
+        {
+            Kind = kind;
+            Summary = summary;
+        }
     }
 
     /// <summary>

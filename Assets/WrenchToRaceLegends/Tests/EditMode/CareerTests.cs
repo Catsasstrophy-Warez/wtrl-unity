@@ -65,7 +65,7 @@ namespace WTRL.Tests
                 CareerCommand.Install("hero-1965", component),
             }, s);
             Assert.That(okAfterAcquire, Is.True);
-            Assert.That(s.InstalledComponents["hero-1965"], Has.Exactly(1).Items);
+            Assert.That(s.InstalledComponents["hero-1965"], Has.Count.EqualTo(1));
         }
 
         [Test]
@@ -81,7 +81,7 @@ namespace WTRL.Tests
             }, s);
 
             var installed = s.InstalledComponents["hero-1965"];
-            Assert.That(installed, Has.Exactly(1).Items);
+            Assert.That(installed, Has.Count.EqualTo(1));
             Assert.That(installed[0].PartId, Is.EqualTo("sport-tire"));
         }
 
@@ -101,10 +101,10 @@ namespace WTRL.Tests
         public void RecordHistoryAppendsToThatVehiclesLedger()
         {
             var s = new CareerState();
-            var evt = new VehicleHistoryEvent { Kind = "dyno", Summary = "Baseline pull" };
+            var evt = new VehicleHistoryEvent("dyno", "Baseline pull");
             CareerTransaction.Apply(new[] { CareerCommand.RecordHistory("hero-1965", evt) }, s);
 
-            Assert.That(s.VehicleHistory["hero-1965"], Has.Exactly(1).Items);
+            Assert.That(s.VehicleHistory["hero-1965"], Has.Count.EqualTo(1));
             Assert.That(s.VehicleHistory["hero-1965"][0].Summary, Is.EqualTo("Baseline pull"));
         }
 
