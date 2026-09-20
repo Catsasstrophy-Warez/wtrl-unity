@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using WTRL.Career;
+using WTRL.Events;
 using WTRL.Garage;
+using WTRL.RPG;
 
 namespace WTRL.Tests
 {
@@ -116,6 +118,149 @@ namespace WTRL.Tests
             var clone = s.Clone();
             clone.OwnedPartIds.Add("track-damper");
             Assert.That(s.OwnedPartIds, Does.Not.Contain("track-damper"));
+        }
+
+        [Test]
+        public void CloneDeepCopiesRivalAndRpgState()
+        {
+            // Regression test for the exact bug class CareerState.Clone()'s
+            // own doc comment warns about: RivalBehavior/ReputationState/
+            // SafetyRating/DriverLicense used to be reference-copied, which
+            // was safe only because no command mutated them. Now that
+            // RecordRaceOutcome does, a clone must be a REAL independent
+            // copy, not the same object under a different variable name.
+            var s = new CareerState();
+            s.RivalBehavior.RecordResult("marsh", playerWon: true);
+            s.ReputationState.RecordNamedRivalWin("marsh");
+            s.SafetyRating.RecordEvent(SafetyEvent.PlayerCausedContact);
+
+            var clone = s.Clone();
+            clone.RivalBehavior.RecordResult("marsh", playerWon: true);
+            clone.ReputationState.RecordNamedRivalWin("marsh");
+            clone.SafetyRating.RecordEvent(SafetyEvent.PlayerCausedContact);
+
+            Assert.That(s.RivalBehavior.Memory("marsh").LossesToPlayer, Is.EqualTo(1),
+                "mutating the clone's RivalBehavior must not affect the original");
+            Assert.That(clone.RivalBehavior.Memory("marsh").LossesToPlayer, Is.EqualTo(2));
+            Assert.That(s.ReputationState.Points, Is.LessThan(clone.ReputationState.Points));
+            Assert.That(s.SafetyRating.Rating, Is.GreaterThan(clone.SafetyRating.Rating));
+        }
+
+        [Test]
+        public void RecordRaceOutcomeWithNamedRivalWinUpdatesReputationAndRivalMemory()
+        {
+            var s = new CareerState();
+            var outcome = new RaceOutcomeDetail("club-circuit-01", 88.5, RaceFormat.Circuit,
+                rivalId: "marsh", playerWon: true);
+
+            var ok = CareerTransaction.Apply(new[] { CareerCommand.RecordRaceOutcome(outcome) }, s);
+
+            Assert.That(ok, Is.True);
+            Assert.That(s.CompletedRaceIds, Does.Contain("club-circuit-01"));
+            Assert.That(s.RaceRecords["club-circuit-01"], Is.EqualTo(88.5));
+            Assert.That(s.RivalBehavior.Memory("marsh").LossesToPlayer, Is.EqualTo(1));
+            Assert.That(s.ReputationState.Points, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void RecordRaceOutcomeWithContactDamagesSafetyRating()
+        {
+            var s = new CareerState();
+            var outcome = new RaceOutcomeDetail("club-circuit-01", 90, RaceFormat.Circuit,
+                playerCausedContact: true);
+
+            CareerTransaction.Apply(new[] { CareerCommand.RecordRaceOutcome(outcome) }, s);
+
+            Assert.That(s.SafetyRating.Rating, Is.EqualTo(92)); // 100 - 8
+        }
+
+        [Test]
+        public void RecordRaceOutcomeWithNoIncidentsCreditsCleanRun()
+        {
+            // Starting rating is already 100 (max) -- EventCompletedZeroIncidents's
+            // +3 has nothing to add, so this asserts the credit was applied
+            // and clamped, not skipped. See the next test for a case where
+            // the credit is visible.
+            var s = new CareerState();
+            var outcome = new RaceOutcomeDetail("club-circuit-01", 90, RaceFormat.Circuit);
+
+            CareerTransaction.Apply(new[] { CareerCommand.RecordRaceOutcome(outcome) }, s);
+
+            Assert.That(s.SafetyRating.Rating, Is.EqualTo(100));
+        }
+
+        [Test]
+        public void RecordRaceOutcomeWithNoIncidentsRecoversRatingFromEarlierContact()
+        {
+            var s = new CareerState();
+            s.SafetyRating.RecordEvent(SafetyEvent.PlayerCausedContact); // 100 -> 92
+            var outcome = new RaceOutcomeDetail("club-circuit-01", 90, RaceFormat.Circuit);
+
+            CareerTransaction.Apply(new[] { CareerCommand.RecordRaceOutcome(outcome) }, s);
+
+            Assert.That(s.SafetyRating.Rating, Is.EqualTo(95)); // 92 + 3
+        }
+
+        [Test]
+        public void RecordRaceOutcomeIsAtomicOnFailureAlongsideOtherCommands()
+        {
+            // The real point of CloneDeepCopiesRivalAndRpgState above: a
+            // failing Spend in the same batch must leave RivalBehavior/
+            // ReputationState/SafetyRating completely untouched too, not
+            // just Money.
+            var s = new CareerState { Money = 10 };
+            var outcome = new RaceOutcomeDetail("club-circuit-01", 90, RaceFormat.Circuit,
+                rivalId: "marsh", playerWon: true, playerCausedContact: true);
+
+            var ok = CareerTransaction.Apply(new[]
+            {
+                CareerCommand.RecordRaceOutcome(outcome),
+                CareerCommand.Spend(999), // fails: insufficient funds
+            }, s);
+
+            Assert.That(ok, Is.False);
+            Assert.That(s.CompletedRaceIds, Does.Not.Contain("club-circuit-01"));
+            Assert.That(s.RivalBehavior.Memory("marsh").LossesToPlayer, Is.EqualTo(0));
+            Assert.That(s.ReputationState.Points, Is.EqualTo(0));
+            Assert.That(s.SafetyRating.Rating, Is.EqualTo(100));
+        }
+
+        [Test]
+        public void RaceSessionCountdownThroughFinishBuildsAValidOutcomeCommand()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 2,
+                reputationRequired: 0) { Format = RaceFormat.Circuit };
+            var session = new RaceSession(race);
+
+            session.BeginCountdown(3);
+            session.Advance(3); // exhausts countdown, auto-starts
+            Assert.That(session.State.Phase, Is.EqualTo(RacePhase.Running));
+
+            session.Advance(45);
+            session.CompleteLap();
+            Assert.That(session.IsFinished, Is.False);
+
+            session.Advance(44);
+            session.CompleteLap();
+            Assert.That(session.IsFinished, Is.True);
+
+            var command = session.BuildOutcomeCommand(playerWon: true, rivalId: "marsh");
+            var s = new CareerState();
+            var ok = CareerTransaction.Apply(new[] { command }, s);
+
+            Assert.That(ok, Is.True);
+            Assert.That(s.CompletedRaceIds, Does.Contain("club-circuit-01"));
+            Assert.That(s.RaceRecords["club-circuit-01"], Is.EqualTo(session.State.ClassifiedTime));
+        }
+
+        [Test]
+        public void RaceSessionThrowsIfOutcomeRequestedBeforeFinish()
+        {
+            var race = new RaceDefinition("club-circuit-01", "Club Circuit", "foundry-row-circuit", laps: 2,
+                reputationRequired: 0);
+            var session = new RaceSession(race);
+
+            Assert.Throws<System.InvalidOperationException>(() => session.BuildOutcomeCommand(playerWon: true));
         }
     }
 }

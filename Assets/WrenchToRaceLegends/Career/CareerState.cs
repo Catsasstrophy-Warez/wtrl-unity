@@ -94,15 +94,16 @@ namespace WTRL.Career
         /// <see cref="CopyFrom"/> in the SAME edit, or it WILL silently
         /// reset on every transaction.
         /// <see cref="RivalBehavior"/>/<see cref="ReputationState"/>/
-        /// <see cref="SafetyRating"/>/<see cref="DriverLicense"/>/
-        /// <see cref="SavedRecipes"/> are reference-copied (not deep-
-        /// cloned) since those types don't expose the internals a deep
-        /// clone would need and no <see cref="CareerCommand"/> mutates
-        /// them — they're the same object on both the original and the
-        /// clone, which is safe only because nothing mutates them during
-        /// a transaction. If a future command needs to mutate one of
-        /// those atomically too, this note is your warning that it isn't
-        /// safe yet.</summary>
+        /// <see cref="SafetyRating"/>/<see cref="DriverLicense"/> are now
+        /// deep-cloned via their own <c>Clone()</c> methods (added
+        /// alongside <c>CareerCommand.RecordRaceOutcome</c>, the first
+        /// command to actually mutate them mid-transaction — see that
+        /// command's handler in <see cref="CareerTransaction"/> and each
+        /// type's own <c>Clone()</c> doc comment). <see cref="SavedRecipes"/>
+        /// remains reference-copied (a shallow list-of-reference-types
+        /// copy would still alias the same <c>SavedBuildRecipe</c>
+        /// instances) since no command mutates it yet — if one starts to,
+        /// give it the same treatment.</summary>
         public CareerState Clone()
         {
             var copy = new CareerState
@@ -120,10 +121,10 @@ namespace WTRL.Career
                 DynoFinalDrive = DynoFinalDrive,
                 DynoTirePressure = DynoTirePressure,
                 DynoNitrous = DynoNitrous,
-                RivalBehavior = RivalBehavior,
-                ReputationState = ReputationState,
-                SafetyRating = SafetyRating,
-                DriverLicense = DriverLicense,
+                RivalBehavior = RivalBehavior.Clone(),
+                ReputationState = ReputationState.Clone(),
+                SafetyRating = SafetyRating.Clone(),
+                DriverLicense = DriverLicense.Clone(),
                 SavedRecipes = SavedRecipes,
             };
             return copy;
@@ -149,6 +150,10 @@ namespace WTRL.Career
             DynoFinalDrive = other.DynoFinalDrive;
             DynoTirePressure = other.DynoTirePressure;
             DynoNitrous = other.DynoNitrous;
+            RivalBehavior = other.RivalBehavior;
+            ReputationState = other.ReputationState;
+            SafetyRating = other.SafetyRating;
+            DriverLicense = other.DriverLicense;
         }
     }
 }

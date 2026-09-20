@@ -14,7 +14,7 @@ namespace WTRL.Career
     // open question rather than silently dropped or resolved by adding an
     // asmdef dependency unilaterally. See CONTRACT.md.
 
-    public enum CareerCommandKind { Earn, Spend, AcquirePart, Install, CompleteRace, RecordHistory }
+    public enum CareerCommandKind { Earn, Spend, AcquirePart, Install, CompleteRace, RecordHistory, RecordRaceOutcome }
 
     /// <summary>A discriminated-union-style command, matching the pattern
     /// already used for <c>WTRL.Vehicle.ShiftExperimentMode</c> since C#
@@ -31,10 +31,11 @@ namespace WTRL.Career
         public readonly string? RaceId;
         public readonly double Time;
         public readonly VehicleHistoryEvent? HistoryEvent;
+        public readonly RaceOutcomeDetail? RaceOutcome;
 
         private CareerCommand(CareerCommandKind kind, int money = 0, int reputation = 0, string? partId = null,
             string? vehicleId = null, InstalledComponent component = default, string? raceId = null,
-            double time = 0, VehicleHistoryEvent? historyEvent = null)
+            double time = 0, VehicleHistoryEvent? historyEvent = null, RaceOutcomeDetail? raceOutcome = null)
         {
             Kind = kind;
             Money = money;
@@ -45,6 +46,7 @@ namespace WTRL.Career
             RaceId = raceId;
             Time = time;
             HistoryEvent = historyEvent;
+            RaceOutcome = raceOutcome;
         }
 
         public static CareerCommand Earn(int money, int reputation) => new(CareerCommandKind.Earn, money: money, reputation: reputation);
@@ -56,6 +58,15 @@ namespace WTRL.Career
             new(CareerCommandKind.CompleteRace, raceId: raceId, time: time);
         public static CareerCommand RecordHistory(string vehicleId, VehicleHistoryEvent evt) =>
             new(CareerCommandKind.RecordHistory, vehicleId: vehicleId, historyEvent: evt);
+
+        /// <summary>Supersedes <see cref="CompleteRace"/> for any race
+        /// where reputation/safety/rival-memory effects should apply --
+        /// see <see cref="RaceOutcomeDetail"/>'s doc comment for the gap
+        /// this closes. <see cref="CompleteRace"/> is kept for callers
+        /// (e.g. existing tests) that only care about best-time tracking.</summary>
+        public static CareerCommand RecordRaceOutcome(RaceOutcomeDetail outcome) =>
+            new(CareerCommandKind.RecordRaceOutcome, raceId: outcome.RaceId, time: outcome.ClassifiedTimeSeconds,
+                raceOutcome: outcome);
     }
 
     /// <summary>Applies a batch of commands atomically: either every
@@ -113,6 +124,47 @@ namespace WTRL.Career
                             candidate.VehicleHistory[command.VehicleId!] = events;
                         }
                         events.Add(command.HistoryEvent!);
+                        break;
+                    }
+                    case CareerCommandKind.RecordRaceOutcome:
+                    {
+                        var outcome = command.RaceOutcome!.Value;
+                        candidate.CompletedRaceIds.Add(outcome.RaceId);
+                        var existingTime = candidate.RaceRecords.TryGetValue(outcome.RaceId, out var t)
+                            ? t : outcome.ClassifiedTimeSeconds;
+                        candidate.RaceRecords[outcome.RaceId] = System.Math.Min(existingTime, outcome.ClassifiedTimeSeconds);
+
+                        // Named-rival win always uses the diminishing-
+                        // returns path, regardless of format -- see
+                        // RaceOutcomeDetail's doc comment. Format-based
+                        // reputation events (TougeDuelWin/OutrunWin) are
+                        // deliberately NOT applied on top of a named-rival
+                        // win, to avoid double-counting one race result as
+                        // two separate reputation gains.
+                        if (outcome.RivalId != null)
+                        {
+                            candidate.RivalBehavior.RecordResult(outcome.RivalId, outcome.PlayerWon);
+                            if (outcome.PlayerWon) candidate.ReputationState.RecordNamedRivalWin(outcome.RivalId);
+                        }
+                        else if (outcome.PlayerWon && outcome.Format == WTRL.Events.RaceFormat.Touge)
+                        {
+                            candidate.ReputationState.RecordEvent(RPG.ReputationEvent.TougeDuelWin);
+                        }
+                        // NOTE: ReputationEvent.OutrunWin has no corresponding
+                        // WTRL.Events.RaceFormat case yet (no "Outrun" format
+                        // exists -- see RaceDefinition.cs's 5-case enum) --
+                        // left unmapped rather than guessed at. Add the
+                        // mapping here once that format exists.
+
+                        if (outcome.PlayerCausedContact) candidate.SafetyRating.RecordEvent(RPG.SafetyEvent.PlayerCausedContact);
+                        if (outcome.CausedRivalSpinOrRetire) candidate.SafetyRating.RecordEvent(RPG.SafetyEvent.CausedRivalSpinOrRetire);
+                        if (outcome.OffTrackCutForAdvantage) candidate.SafetyRating.RecordEvent(RPG.SafetyEvent.OffTrackCutForAdvantage);
+                        if (outcome.CleanOvertakeOccurred) candidate.SafetyRating.RecordEvent(RPG.SafetyEvent.CleanOvertakeNoContact);
+                        if (outcome.DefensiveHoldNoContact) candidate.SafetyRating.RecordEvent(RPG.SafetyEvent.DefensiveHoldNoContact);
+                        if (!outcome.PlayerCausedContact && !outcome.CausedRivalSpinOrRetire && !outcome.OffTrackCutForAdvantage)
+                        {
+                            candidate.SafetyRating.RecordEvent(RPG.SafetyEvent.EventCompletedZeroIncidents);
+                        }
                         break;
                     }
                 }

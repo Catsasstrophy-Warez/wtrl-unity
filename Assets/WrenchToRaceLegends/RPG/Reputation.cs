@@ -84,5 +84,26 @@ namespace WTRL.RPG
                     throw new ArgumentOutOfRangeException(nameof(evt), evt, null);
             }
         }
+
+        /// <summary>Deep copy, including the private per-rival win-count
+        /// dictionary that <see cref="RecordNamedRivalWin"/>'s diminishing
+        /// returns depend on. Added so <c>WTRL.Career.CareerTransaction</c>
+        /// can clone-mutate-commit this state atomically alongside
+        /// <c>CareerState</c>'s other fields, instead of the reference-copy
+        /// `CareerState.Clone()` used before any command actually mutated
+        /// this type mid-transaction (see that method's own warning
+        /// comment about exactly this class of bug).</summary>
+        public ReputationState Clone()
+        {
+            var copy = new ReputationState
+            {
+                KnownThreshold = KnownThreshold,
+                RespectedThreshold = RespectedThreshold,
+                TrustedThreshold = TrustedThreshold,
+            };
+            copy.Points = Points;
+            foreach (var kv in _rivalWinCounts) copy._rivalWinCounts[kv.Key] = kv.Value;
+            return copy;
+        }
     }
 }

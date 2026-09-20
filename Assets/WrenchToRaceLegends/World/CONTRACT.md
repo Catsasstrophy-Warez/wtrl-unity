@@ -69,3 +69,16 @@ for the full project-wide count.
 - The actual cell-content authoring (Blender-produced trees/poles/
   barriers/buildings) — real work already happening in a separate track
   (`racinggame/BlenderPipeline/`), not this assembly's concern.
+
+## First authored track content (2026-09-20)
+
+`World/SampleContent.FoundryRowCircuit()` — the project's first
+authored (non-fixture) `TrackDefinition`. "Foundry Row" is one of the
+two Blackridge vertical-slice candidates `PROJECT-MAP-UNITY-MOBILE.md`
+names. Paired with `WTRL.Racing.SampleContent.FoundryRowCircuitLine()`
+via a duplicated string id, not a shared reference — see
+`Career/CONTRACT.md`'s account of why (a real cross-assembly compile
+error this pass caught and fixed). `LengthM` is the actual polyline
+length of the paired racing line's nodes, cross-checked by
+`SampleContentTests.TrackDefinitionLengthMatchesTheActualPolylineLength`.
+Node shape/dimensions are placeholders, not derived from a real survey.

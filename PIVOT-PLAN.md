@@ -254,7 +254,7 @@ lives in the linked file — this is a pointer, not a replacement.
 | BuildRecipe (Garage/RPG boundary) | `Garage/CONTRACT.md`, `RPG/CONTRACT.md` | Satisfaction-check logic lives in Garage (needs Vehicle/Engine types); the progression/reward wrapper lives in RPG (string-id reference only) — resolved 3-way tradeoff, not a default. |
 | World | `World/CONTRACT.md` | `StableWorldSeed` has a documented 32-bit-vs-64-bit-Int numerical deviation from Swift's original. |
 | Events | `Events/CONTRACT.md` | Real 4-phase `RaceRuntimeState`, not Rev16.1's 8-state shape — the 8-state wrapper is flagged as future work once scene-loading exists, not implemented speculatively. |
-| Career | `Career/CONTRACT.md` | `CareerState.Clone()`/`CopyFrom()` must both list every field or transactions silently reset unlisted fields to default — caught once already; documented as a standing warning for the next field added. |
+| Career | `Career/CONTRACT.md` | `CareerState.Clone()`/`CopyFrom()` must both list every field or transactions silently reset unlisted fields to default — caught once already; documented as a standing warning for the next field added. Now also: `CareerCommand.RecordRaceOutcome` closes the long-flagged race-completion → RPG/Racing wiring gap; caught and fixed a real atomicity bug (RPG/Racing state was reference-copied, not deep-cloned) while building it. `RaceSession` wires `RaceRules` to it. |
 | Persistence | `Persistence/CONTRACT.md` | Added a real (mechanical, not architectural) `WTRL.Racing` asmdef dependency. `runEvidence`/`dynoRuns`/`ghostReplays` deliberately not in the save DTO yet (flagged, not silently dropped). |
 | Runtime | `Runtime/CONTRACT.md` | `new FixedStepClock()` silently zero-inits instead of calling its `hz=120` constructor (struct-specific C# gotcha) — caught by `dotnet test` hanging, not by the compiler or reading. First bug this whole pass caught only by running tests. |
 | Content | `Content/CONTRACT.md` | Answers "who owns content resolution": `ScriptableObject` wrappers with direct object references, still no lookup-by-id anywhere. **Verified**: compiles clean and has real generated `.asset` instances (hero-1965). Found and fixed a real Unity bug where only the first ScriptableObject type per file gets a correct script reference — every type now lives in its own file. |
@@ -564,3 +564,46 @@ lives in the linked file — this is a pointer, not a replacement.
   real generated content, real Play-session-level test coverage, all
   inside the actual target engine. Structural validator: 16 assemblies,
   49 C# files, no reference cycles (Claude).
+- 2026-09-20: Closed three more long-flagged gaps in one pass — a real
+  first circuit, race-session orchestration, and race-completion wiring
+  into Career/RPG/Racing.
+  Added `World/SampleContent.FoundryRowCircuit()` and `Racing/
+  SampleContent.FoundryRowCircuitLine()`, the project's first authored
+  (non-fixture) track content, sharing a duplicated string id rather
+  than a reference since `WTRL.Racing` has no `WTRL.World` dependency.
+  Added `Career/RaceSession.cs`, wiring `WTRL.Events.RaceRules`/
+  `RaceRuntimeState` (countdown → running → lap/sector progression →
+  finished) to a new `CareerCommand.RecordRaceOutcome`.
+  That command is the actual fix for the gap every `CareerTransaction`/
+  `CareerState` note has flagged since Career was first ported: nothing
+  called `ReputationState.RecordEvent`/`SafetyRatingState.RecordEvent`/
+  `RivalBehaviorRuntime.RecordResult` on race completion, because no
+  structured result data existed. `RaceOutcomeDetail` is that data.
+  **Caught and fixed a real atomicity bug while building it**:
+  `CareerState.Clone()` reference-copied `RivalBehavior`/
+  `ReputationState`/`SafetyRating`/`DriverLicense` — safe only because
+  no command mutated them yet, which its own doc comment already
+  warned about. `RecordRaceOutcome` is the first command that does;
+  fixed by adding real `Clone()` methods to all four types (`WTRL.RPG`
+  ×3, `WTRL.Racing` ×1) and using them in `CareerState.Clone()`. A
+  dedicated regression test (`RecordRaceOutcomeIsAtomicOnFailure
+  AlongsideOtherCommands`) guards against this specific bug recurring.
+  **Caught a second real bug, this time from the real Unity Editor, not
+  `dotnet test`**: an early version of `Racing/SampleContent.cs`
+  referenced `WTRL.World.SampleContent` directly and failed to compile
+  with CS0103 in the Editor -- Racing's asmdef has no World reference.
+  The throwaway `dotnet test` verification method used throughout this
+  project missed this entirely, because it copies every assembly's
+  files into one flat folder, which hides real asmdef boundary
+  violations. Fixed by duplicating the shared id as a string literal
+  instead (same pattern `BuildRecipeProgress` already uses to avoid a
+  `WTRL.Garage` dependency). **Noted as a standing gap in this
+  project's verification method**: cross-assembly reference errors
+  between two assemblies with no dependency on each other need a real
+  Editor compile to catch, not just `dotnet test`.
+  11 new tests added, verified via both the throwaway `dotnet test`
+  method (87/87) and, for the first time on a same-day basis, the real
+  Unity Editor Test Runner (88/88 — one more than the dotnet count
+  reflects a pre-existing discrepancy in how the two methods enumerate
+  tests, not a new failure). Structural validator: 16 assemblies, 54 C#
+  files, no reference cycles (Claude).

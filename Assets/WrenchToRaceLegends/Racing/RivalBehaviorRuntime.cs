@@ -67,6 +67,19 @@ namespace WTRL.Racing
             foreach (var rivalId in RivalIntimidation.Ceilings.Keys) intimidation[rivalId] = Intimidation(rivalId);
             return new RivalBehaviorSnapshot { Memories = new Dictionary<string, RivalMemory>(_memories), Intimidation = intimidation };
         }
+
+        /// <summary>Deep copy of the raw memory dictionary (intimidation is
+        /// always derived, never copied). Added so `WTRL.Career
+        /// .CareerTransaction` can clone-mutate-commit this state
+        /// atomically alongside `CareerState`'s other fields, instead of
+        /// the reference-copy `CareerState.Clone()` used before any
+        /// command actually mutated this type mid-transaction.</summary>
+        public RivalBehaviorRuntime Clone()
+        {
+            var copy = new RivalBehaviorRuntime();
+            copy.Restore(_memories);
+            return copy;
+        }
     }
 
     /// <summary>Stable FNV-1a derived sample. Inputs are explicit simulation

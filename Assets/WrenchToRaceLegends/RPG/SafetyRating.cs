@@ -50,6 +50,11 @@ namespace WTRL.RPG
         }
 
         public bool WasResultClean(double cleanThreshold = 85) => Rating >= cleanThreshold;
+
+        /// <summary>Deep copy -- see <see cref="ReputationState.Clone"/>'s
+        /// doc comment for why this exists (CareerTransaction atomicity
+        /// once a command actually mutates this type mid-transaction).</summary>
+        public SafetyRatingState Clone() => new() { Rating = Rating };
     }
 
     public enum DriverLicenseGrade { Provisional, Club, Contender, Licensed }
@@ -78,5 +83,9 @@ namespace WTRL.RPG
         }
 
         public void Promote(DriverLicenseGrade grade) => Grade = grade;
+
+        /// <summary>Deep copy -- see <see cref="ReputationState.Clone"/>'s
+        /// doc comment for why this exists.</summary>
+        public DriverLicenseState Clone() => new() { Grade = Grade, MinimumSafetyRatingForKnockoutEntry = MinimumSafetyRatingForKnockoutEntry };
     }
 }

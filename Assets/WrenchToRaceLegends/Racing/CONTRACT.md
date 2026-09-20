@@ -63,3 +63,20 @@ this assembly's files plus `WTRL.Vehicle`'s (these files have no
 - The content side of rivals — which `VehicleDefinition` each rival
   drives, per-rival generation data — lives wherever the content-catalog
   architecture question from `WTRL.Vehicle/CONTRACT.md` gets resolved.
+
+## Clone() added to RivalBehaviorRuntime; first authored track content (2026-09-20)
+
+Added `RivalBehaviorRuntime.Clone()` (deep copy of the memory
+dictionary) for the same `CareerTransaction` atomicity reason as
+`WTRL.RPG`'s three `Clone()` additions — see `Career/CONTRACT.md`.
+
+Also added `Racing/SampleContent.FoundryRowCircuitLine()` — the
+project's first authored (non-fixture) `TrackLineDefinition`, paired
+with `WTRL.World.SampleContent.FoundryRowCircuit()`. The two share only
+a duplicated string id (`"foundry-row-circuit"`), not a reference —
+`WTRL.Racing` deliberately has no dependency on `WTRL.World`, confirmed
+the hard way when an earlier version referencing it directly failed to
+compile in a real Unity Editor (a cross-assembly error the throwaway
+`dotnet test` method missed entirely, since it flattens every assembly
+into one folder). See `Career/CONTRACT.md` for the full account and the
+process lesson.

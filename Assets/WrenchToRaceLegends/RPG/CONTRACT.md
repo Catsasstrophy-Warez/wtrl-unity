@@ -139,3 +139,14 @@ Verified: `dotnet test` (76/76, unchanged) confirms this refactor
 didn't change behavior, and this assembly's `.dll` now also compiles
 cleanly inside a real, licensed Unity Editor — the first time anything
 in this project has been proven to build there.
+
+## Clone() added to ReputationState/SafetyRatingState/DriverLicenseState (2026-09-20)
+
+`WTRL.Career.CareerCommand.RecordRaceOutcome` is the first command that
+mutates these three types mid-transaction, which needed real deep-copy
+support for `CareerTransaction.Apply`'s atomicity to hold — see
+`Career/CONTRACT.md`'s "Closed a long-flagged gap" section for the
+full account of the atomicity bug this caught. `ReputationState.Clone()`
+also copies the private per-rival win-count dictionary
+`RecordNamedRivalWin`'s diminishing returns depends on, not just
+`Points`.

@@ -118,3 +118,82 @@ Verified: `dotnet test` (76/76, unchanged) confirms this refactor
 didn't change behavior, and this assembly's `.dll` now also compiles
 cleanly inside a real, licensed Unity Editor — the first time anything
 in this project has been proven to build there.
+
+## Closed a long-flagged gap: race completion now updates RPG/Racing state (2026-09-20)
+
+Every `CareerTransaction`/`CareerState` note up to this point flagged
+the same open item: nothing calls `ReputationState.RecordEvent`/
+`SafetyRatingState.RecordEvent`/`RivalBehaviorRuntime.RecordResult`
+when a race completes, because no structured race-result data existed
+to drive them. `RaceOutcomeDetail.cs` is that data, and
+`CareerCommand.RecordRaceOutcome` (a 7th command kind, alongside the
+existing `CompleteRace` which is kept for callers that only care about
+best-time tracking) is the command that applies it atomically:
+`CompletedRaceIds`/`RaceRecords`, a named-rival win via
+`RivalBehaviorRuntime.RecordResult` + `ReputationState
+.RecordNamedRivalWin` (diminishing returns), format-based reputation
+for a rival-less Touge win, and every `SafetyEvent` case based on
+caller-supplied conduct flags.
+
+**`RaceOutcomeDetail`'s conduct flags (contact, clean overtake, etc.)
+must be supplied by the caller** — this assembly has no collision or
+track-limit detection of its own; that needs real scene colliders,
+which don't exist anywhere in this project yet. A caller with no way
+to know otherwise passing all-default (clean) flags is honest; a
+caller that DOES have collision data defaulting them away for
+convenience would not be.
+
+**A real atomicity bug was caught and fixed while building this**:
+`CareerState.Clone()` reference-copied `RivalBehavior`/
+`ReputationState`/`SafetyRating`/`DriverLicense` (safe only because no
+command mutated them yet — its own doc comment already warned about
+this exact class of bug). `RecordRaceOutcome` is the first command
+that mutates them mid-transaction, which would have broken
+`CareerTransaction.Apply`'s atomicity guarantee (a failed `Spend`
+later in the same batch would still have left the RPG/Racing
+side-effects applied, since candidate and original shared the same
+object). Fixed by adding real `Clone()` methods to `ReputationState`,
+`SafetyRatingState`, `DriverLicenseState` (RPG), and
+`RivalBehaviorRuntime` (Racing), and using them in `CareerState.Clone()`.
+`RecordRaceOutcomeIsAtomicOnFailureAlongsideOtherCommands` and
+`CloneDeepCopiesRivalAndRpgState` (`Tests/EditMode/CareerTests.cs`)
+guard against this regressing.
+
+## RaceSession — wires RaceRules/RaceRuntimeState to a CareerCommand
+
+New type, `Career/RaceSession.cs`: owns a `RaceDefinition` +
+`RaceRuntimeState`, delegates countdown/lap/sector progression to
+`WTRL.Events.RaceRules`, and once finished (`IsFinished`), builds a
+`CareerCommand.RecordRaceOutcome` via `BuildOutcomeCommand`. Deliberately
+thin — no scene loading, no rendering, no checkpoint/collision
+detection (those aren't systems yet). This is what "wire RaceRules
+into a session" and "wire race completion into Career" actually look
+like as code, not the full event-preflight/results-flow experience
+Rev16.1's audit recommended (still not implemented — see
+`Events/CONTRACT.md`).
+
+## First authored (non-fixture) circuit content
+
+`World/SampleContent.FoundryRowCircuit()` (a `TrackDefinition`) and
+`Racing/SampleContent.FoundryRowCircuitLine()` (a `TrackLineDefinition`
+with 8 waypoint nodes) — "Foundry Row" is one of the two Blackridge
+vertical-slice candidates PROJECT-MAP-UNITY-MOBILE.md names. The two
+share only the string id `"foundry-row-circuit"`, duplicated rather
+than referenced, since `WTRL.Racing` deliberately has no dependency on
+`WTRL.World` — confirmed the hard way: an earlier version referenced
+`World.SampleContent` directly from `Racing/SampleContent.cs` and
+failed to compile in the real Unity Editor with CS0103, a
+cross-assembly reference error the throwaway `dotnet test` method
+couldn't catch because it flattens every assembly into one folder,
+hiding real asmdef boundaries. **Lesson for future sample/test content
+spanning two assemblies with no dependency between them: always
+confirm with a real Unity Editor compile, not just `dotnet test`, when
+adding a file that references another assembly's types.**
+`SampleContentTests.TrackAiDriverCanFollowTheFoundryRowLineAllTheWayAround`
+is a real integration test proving `WTRL.Racing.TrackAiDriver`
+(previously only fixture-tested) can actually drive this circuit's
+waypoints end to end.
+
+Node coordinates and target speeds are placeholder shapes, not derived
+from any real track survey — flagged the same way the rival roster's
+Blender blockout dimensions were.
