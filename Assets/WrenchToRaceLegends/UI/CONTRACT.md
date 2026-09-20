@@ -487,3 +487,35 @@ mesh-surgery work, not a Unity-side change.
 Rebuilt `VerticalSlice.unity` and all 6 `Scenes/Tracks/*.unity` scenes
 against the new FBX files; 125/125 EditMode + 18/18 PlayMode tests
 still pass, 16 assemblies / 85 C# files, no reference cycles.
+
+## Full Blender quality pass: mesh cleanup + higher-res textures everywhere (2026-09-20)
+
+Follows up on this file's own prior entry, which named the exact fix
+needed for the self-intersecting-polygon defect ("re-running the
+boolean/bevel scripts with cleanup... would be the real fix") and
+explicitly left it undone. That fix is now done, on the racinggame
+side (`BlenderPipeline/REFERENCE-MODELING-ACCEPTANCE.md`'s own new
+changelog entry has the full diagnosis and verification) -- summary
+here: `HeroCrownfire.fbx`/`MarshNsx.fbx` were re-imported with ZERO
+self-intersecting-polygon warnings (down from 17), confirmed by
+re-running the exact same import that first found the defect, same
+97/92 object counts and identical overall bounds as before.
+
+Also replaced every track's asphalt/barrier texture
+(`Art/Tracks/Textures/*.png`, 256px->1024px asphalt / 64px->256px
+barrier, both now with layered multi-octave noise, a solid edge line
+on the road in addition to the dashed centerline, and weathered/
+bolted detail on the barriers) and the ground texture
+(`Art/Environment/Textures/world_ground_grass.png`, 512px->1024px,
+same layered-noise technique for consistency with the track texture).
+All still single-Base-Color procedural color textures, not a real PBR
+material pass (no normal/roughness/AO maps) -- an honest scope limit,
+not claimed as finished art.
+
+Rebuilt `VerticalSlice.unity` and all 6 `Scenes/Tracks/*.unity` scenes
+against every new asset; 125/125 EditMode + 18/18 PlayMode tests still
+pass, 16 assemblies / 85 C# files, no reference cycles. As always, none
+of the actual visual improvement has been confirmed by a screenshot or
+human eyes -- only by mesh-import diagnostics, file resolution checks,
+and GUID-reference inspection, since no visual QA capability exists in
+this environment.

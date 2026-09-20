@@ -969,3 +969,30 @@ lives in the linked file — this is a pointer, not a replacement.
   `VerticalSlice.unity` and all 6 track scenes against the new FBX;
   125/125 EditMode + 18/18 PlayMode tests still pass, 16 assemblies /
   85 C# files, no reference cycles (Claude).
+
+- 2026-09-20: A full "run everything through Blender again" quality
+  pass, closing the exact defect the prior entry left open. Diagnosed
+  the self-intersecting-polygon warning with a real bmesh health check
+  first (zero non-manifold edges, zero degenerate faces -- ruling out
+  topology damage before concluding it was a boolean-solver seam
+  artifact), then fixed both vehicle bodies with a new
+  `clean_body_mesh_artifacts.py` (merge-by-distance + dissolve-
+  degenerate + recalc normals). Re-verified via a fresh Unity re-import
+  of the new FBX: zero self-intersecting warnings (down from 17), same
+  97/92 object counts, identical overall bounds. Also caught and fixed
+  a real mistake mid-pass: an initial texture regeneration accidentally
+  copied stale, previously-cached 256px textures back into Unity
+  instead of the freshly-generated 1024px ones (the generator script
+  only ever wrote to a temp directory, not the repo's export folder --
+  an existing, easy-to-miss quirk of this pipeline), caught by directly
+  checking the copied files' real resolution with `file` rather than
+  trusting the copy step succeeded. Raised every track's asphalt
+  (256px->1024px) and barrier (64px->256px) texture resolution with
+  new layered multi-octave noise, added a solid road-edge line
+  (previously centerline-only), and added weathered/bolted barrier
+  detail; raised the ground texture 512px->1024px with the same
+  layered-noise technique. Still color-only procedural textures, not a
+  real PBR pass (no normal/roughness/AO maps) -- an honest scope limit.
+  Rebuilt `VerticalSlice.unity` and all 6 track scenes against every
+  new asset; 125/125 EditMode + 18/18 PlayMode tests still pass, 16
+  assemblies / 85 C# files, no reference cycles (Claude).
