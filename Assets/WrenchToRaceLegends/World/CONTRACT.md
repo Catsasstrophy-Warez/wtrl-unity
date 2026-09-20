@@ -82,3 +82,32 @@ error this pass caught and fixed). `LengthM` is the actual polyline
 length of the paired racing line's nodes, cross-checked by
 `SampleContentTests.TrackDefinitionLengthMatchesTheActualPolylineLength`.
 Node shape/dimensions are placeholders, not derived from a real survey.
+
+## The full documented world, built (2026-09-20)
+
+Closes the "build the whole documented world" request. Added
+`DistrictDefinition` (new type — districts/zones were named, real
+content in the research corpus but had no corresponding type anywhere
+in this port) and real content for every named location
+`racinggame/DEEP-CONTENT-CATALOG.md`'s "Complete named locations"
+section lists: both counties (Blackridge, San Triana), all 11
+districts/zones across them, all 4 named race facilities (Redline
+Raceway, Cutback Tri-Oval, Longbow Speedway, Highbank Superspeedway),
+plus 2 generic service facilities and a "Blackridge Road Course Park"
+grouping facility (that last one's own name is invented — the corpus
+never names a specific road-course facility).
+
+Also added `TrackDefinition`s for all 3 of the corpus's "original
+road-course principles" (forest elevation, coastal signature-drop,
+technical tight) under this pass's own names (Whisperwood Forest
+Circuit, Cliffside Coastal Circuit, Ironclad Technical Circuit — not
+sourced, flagged the same way the rival-generation names were), plus
+the 3 named oval classes and the quarter-mile drag strip. San Triana's
+`FacilityIds` is deliberately left empty — the corpus never names a
+facility against that county, only its districts.
+
+Every `TrackDefinition.LengthM` is the *actual* measured polyline
+length of its paired `WTRL.Racing.SampleContent` racing line (verified
+by `SampleContentTests.AllWorldTracksHaveAMatchingRacingLineWithSameIdAndAccurateLength`,
+which found and required correcting 6 of 7 initial length estimates
+after the real geometry was built), not an independent guess.

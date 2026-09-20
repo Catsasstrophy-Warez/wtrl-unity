@@ -3,25 +3,27 @@ using UnityEngine;
 
 namespace WTRL.EditorTools
 {
-    /// <summary>Diagnostic-only, temporary: logs the combined mesh bounds
-    /// of an imported FBX so an obviously-wrong import scale (e.g. a car
-    /// that imports as 1000 units tall) can be caught without a human
-    /// looking at it. Not part of the game -- safe to delete once the
-    /// hero/Marsh FBX imports are confirmed sane.</summary>
+    /// <summary>Logs the combined mesh bounds of every imported FBX
+    /// asset this project ships, so an obviously-wrong import scale or
+    /// axis mismatch (e.g. a car importing 1000 units tall, or a track's
+    /// length landing on the wrong axis) can be caught without a human
+    /// looking at it. Real, reproduced bugs of exactly this kind were
+    /// caught this way for both the vehicle models and the track meshes
+    /// -- see UI/CONTRACT.md's "Real vehicle geometry + visual pass" and
+    /// Career/CONTRACT.md's world-content notes for the full accounts.
+    /// Uses `Renderer.bounds` on a freshly-instantiated, untouched
+    /// (zero-rotation) copy of each prefab -- reliable for that case, but
+    /// NOTE: `Renderer.bounds`/`Transform.localToWorldMatrix` were both
+    /// found to not reliably reflect a rotation applied to an object
+    /// AFTER instantiation, in this environment's `-nographics`
+    /// headless batchmode specifically. Don't reuse this pattern to
+    /// verify a post-instantiation rotation fix -- compute world
+    /// positions from `Matrix4x4.TRS(transform.position, transform
+    /// .rotation, transform.lossyScale)` built fresh instead, or (more
+    /// reliably still) bake any needed correction into the exported mesh
+    /// data itself, as `generate_world_tracks.py` does.</summary>
     public static class ModelBoundsDiagnostic
     {
-        [MenuItem("Assets/WTRL/Diagnose Marsh Asset Load")]
-        public static void DiagnoseMarshLoad()
-        {
-            AssetDatabase.Refresh();
-            const string path = "Assets/WrenchToRaceLegends/Content/Generated/VehicleDefinition_MarshGen1.asset";
-            var asObject = AssetDatabase.LoadAssetAtPath<Object>(path);
-            var asVehicle = AssetDatabase.LoadAssetAtPath<WTRL.Content.VehicleDefinitionAsset>(path);
-            var guid = AssetDatabase.AssetPathToGUID(path);
-            Debug.Log($"guid='{guid}' asObject={(asObject == null ? "null" : asObject.GetType().FullName)} " +
-                $"asVehicle={(asVehicle == null ? "null" : "ok")}");
-        }
-
         [MenuItem("Assets/WTRL/Diagnose Imported Model Bounds")]
         public static void Run()
         {
@@ -29,6 +31,14 @@ namespace WTRL.EditorTools
             {
                 "Assets/WrenchToRaceLegends/Art/Vehicles/HeroCrownfire.fbx",
                 "Assets/WrenchToRaceLegends/Art/Vehicles/MarshNsx.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/foundry-row-circuit.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/redline-raceway.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/cutback-tri-oval.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/longbow-speedway.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/highbank-superspeedway.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/whisperwood-forest-circuit.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/cliffside-coastal-circuit.fbx",
+                "Assets/WrenchToRaceLegends/Art/Tracks/ironclad-technical-circuit.fbx",
             })
             {
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);

@@ -710,3 +710,50 @@ lives in the linked file — this is a pointer, not a replacement.
   pass, a bounds measurement, or a file diff, not a screenshot.
   Structural validator: 16 assemblies, 70 C# files, no reference
   cycles (Claude).
+- 2026-09-20: Built the whole documented world, then generated real
+  Blender geometry for it, per explicit request.
+  Added `WTRL.World.DistrictDefinition` (new type -- districts/zones
+  were real, named content in `racinggame/DEEP-CONTENT-CATALOG.md` but
+  had no corresponding type anywhere in this port) and real content for
+  every named location that document lists: both counties (Blackridge,
+  San Triana), all 11 districts/zones, all 4 named race facilities
+  (Redline Raceway, Cutback Tri-Oval, Longbow Speedway, Highbank
+  Superspeedway), plus the 3 "original road-course principle" archetypes
+  under this pass's own invented names (Whisperwood Forest/Cliffside
+  Coastal/Ironclad Technical Circuit -- flagged as not sourced, same as
+  the rival-generation names). Added `WTRL.Racing.SampleContent
+  .BuildOvalLine`, a reusable procedural stadium-loop generator, rather
+  than hand-placing oval waypoints 3 times. Every `TrackDefinition
+  .LengthM` is the real measured polyline length of its paired racing
+  line, not a guess -- a new cross-check test found and required
+  correcting 6 of 7 initial length estimates.
+  Then generated real ribbon-road Blender geometry for all 8 tracks
+  (`racinggame/BlenderPipeline/scripts/generate_world_tracks.py`,
+  matching the exact same waypoint coordinates as the C# content) and
+  wired Foundry Row's mesh into `VerticalSlice.unity`, replacing what
+  was only primitive node markers.
+  **Found and fixed a second real orientation bug, and a third
+  underlying tooling bug while chasing it.** The track mesh hit the
+  same FBX axis-remap issue the vehicle models did (length landing on
+  the wrong axis) -- but fixing it exposed that `Transform
+  .localToWorldMatrix`/`Renderer.bounds` do NOT reliably reflect a
+  rotation applied immediately after instantiation in this
+  environment's `-nographics` headless batchmode, even when `Transform
+  .rotation.eulerAngles` correctly reports the new value. This made a
+  runtime-rotation fix (the vehicle approach) unverifiable for a flat,
+  direction-sensitive mesh. Fixed instead by baking the axis
+  correction directly into the Blender export script's vertex
+  construction, verified against a freshly-instantiated, untouched
+  copy (no post-instantiation rotation involved) matching the C#
+  waypoints' real coordinates exactly.
+  **Re-confirmed the earlier vehicle rotation fix is NOT compromised by
+  this newly-found quirk** -- its rotation value is correctly present
+  in `VerticalSlice.unity` as a real `PrefabInstance` override (found
+  by grepping the saved scene's actual override *values*, not just
+  property-path names); the quirk only affects reading a rotation's
+  effect back within the same batchmode execution, not whether Unity
+  correctly saves and later re-applies it.
+  6 new tests, all passing via both the throwaway `dotnet test` method
+  (103/103) and the real Unity Editor Test Runner (104/104 EditMode +
+  4/4 PlayMode). Structural validator: 16 assemblies, 70 C# files, no
+  reference cycles (Claude).

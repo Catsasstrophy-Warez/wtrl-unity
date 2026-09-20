@@ -95,3 +95,22 @@ real physics under AI control end to end.
 
 Same no-catalog discipline as everything else: every definition is a
 required constructor parameter.
+
+## Every documented track's AI racing line, plus a reusable oval generator (2026-09-20)
+
+Added racing lines for all 7 new `WTRL.World` tracks. The 3 oval
+tracks (Cutback Tri-Oval, Longbow Speedway, Highbank Superspeedway)
+share a new `BuildOvalLine` helper that procedurally generates a
+stadium-shape loop (2 straights + 2 semicircular ends) from just
+straight length + turn radius + speeds, rather than hand-placing dozens
+of node coordinates that would only look precise. The 3 road-course
+archetypes (Whisperwood/Cliffside/Ironclad) are hand-authored node
+loops, same discipline as Foundry Row. The drag strip (Redline Raceway)
+deliberately has no racing line -- `WTRL.Events.DragRaceRules` already
+drives progression by straight-line distance, not waypoint-following.
+
+`AiVehicleSessionTests`-style integration coverage was extended
+(`SampleContentTests.AiVehicleSessionCanFollowEveryNewTrackLineWithoutError`)
+to confirm `TrackAiDriver.Perceive` never fails and every node is
+reachable in sequence for all 6 new lines, including shapes the AI
+driving code had never seen before (the procedurally-generated ovals).
