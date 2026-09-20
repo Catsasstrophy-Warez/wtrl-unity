@@ -128,13 +128,26 @@ let Package Manager resolve/adjust them and commit whatever it produces.
 
 ## Multi-agent division of labor
 
+**Update, 2026-09-19: ChatGPT and Gemini turned out not to be available
+for this project.** Both first assignments (`ChatGPT-Rev16.1-Audit-
+Brief.md`, `Gemini-RPG-Spec-Brief.md`) were completed by Claude instead
+— see `Assignments/OUTPUT-Rev16.1-Audit.md` and `Assignments/OUTPUT-RPG-
+Design.md`, each opening with a note saying so. **This project is
+currently being built solo, not across three assistants.** The module-
+ownership split below is kept as written in case that changes later
+(the briefs and `CONTRACT.md` convention are exactly what a second
+assistant would need to onboard), but nothing below should be read as
+"in progress elsewhere" — if it's not shipped in this repo, it hasn't
+been done by anyone.
+
 Claude, ChatGPT and Gemini have no shared memory of each other's
-sessions. The only things they share are: this repository (via git — see
-below), this document, and a `CONTRACT.md` file inside each assembly
-folder once one exists. **Every module owner must treat its own
-`.asmdef`'s public API as a contract other modules depend on — changing a
-public signature without updating `CONTRACT.md` is the failure mode that
-will actually break this arrangement.**
+sessions. The only things they'd share, if this becomes multi-assistant
+again, are: this repository (via git — see below), this document, and a
+`CONTRACT.md` file inside each assembly folder once one exists. **Every
+module owner must treat its own `.asmdef`'s public API as a contract
+other modules depend on — changing a public signature without updating
+`CONTRACT.md` is the failure mode that will actually break this
+arrangement.**
 
 Suggested split (adjust freely, but keep ownership boundaries at assembly
 edges, not inside one):
@@ -290,3 +303,19 @@ than assuming it.
   fresh design (no direct Swift source) or are waiting on ChatGPT's/
   Gemini's assignments, still with no OUTPUT files as of this entry
   (Claude).
+- 2026-09-19: ChatGPT and Gemini confirmed unavailable — both first
+  assignments completed by Claude instead (`Assignments/OUTPUT-
+  Rev16.1-Audit.md`, `Assignments/OUTPUT-RPG-Design.md`). Updated the
+  "Multi-agent division of labor" section to say so plainly: this
+  project is being built solo for now. Also shipped `WTRL.RPG`'s
+  well-specified parts (`ReputationState` with diminishing-returns
+  rival wins, `SafetyRatingState`+`DriverLicenseState` with the
+  professional-tier knockout-entry gate, `ClassBracket`) straight from
+  the RPG design doc's own recommendations — verified 0 errors/0
+  warnings (one real enum-comparison bug caught and fixed), 12/12 new
+  tests passing, each citing a specific spec section. `BuildRecipe`
+  deliberately deferred — it needs a real architecture decision
+  (does WTRL.RPG depend on WTRL.Garage?) laid out as an open question
+  in the design doc, not resolved unilaterally. `WTRL.Vehicle`,
+  `WTRL.Racing`, `WTRL.Garage`, `WTRL.Lab`, and now `WTRL.RPG` are
+  ported/designed and verified (Claude).
