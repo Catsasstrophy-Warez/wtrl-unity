@@ -1,0 +1,1 @@
+{"name":"WTRL.UI","rootNamespace":"WTRL.UI","references":["WTRL.Core","WTRL.Vehicle","WTRL.World","WTRL.Events","WTRL.Racing","WTRL.Garage","WTRL.Lab","WTRL.RPG","WTRL.Career","WTRL.Runtime"]}

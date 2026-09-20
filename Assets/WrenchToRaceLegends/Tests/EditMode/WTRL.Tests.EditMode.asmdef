@@ -1,0 +1,26 @@
+{
+  "name": "WTRL.Tests.EditMode",
+  "rootNamespace": "WTRL.Tests",
+  "includePlatforms": ["Editor"],
+  "references": [
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner",
+    "WTRL.Core",
+    "WTRL.Vehicle",
+    "WTRL.World",
+    "WTRL.Events",
+    "WTRL.Racing",
+    "WTRL.Garage",
+    "WTRL.Lab",
+    "WTRL.RPG",
+    "WTRL.Career",
+    "WTRL.Persistence",
+    "WTRL.Runtime",
+    "WTRL.UI",
+    "WTRL.Editor"
+  ],
+  "precompiledReferences": ["nunit.framework.dll"],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "autoReferenced": false,
+  "overrideReferences": true
+}
