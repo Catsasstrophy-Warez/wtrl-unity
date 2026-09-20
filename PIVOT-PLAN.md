@@ -1024,3 +1024,62 @@ lives in the linked file — this is a pointer, not a replacement.
   EditMode + 18/18 PlayMode tests pass, 16 assemblies / 87 C# files, no
   reference cycles. Vehicle materials were explicitly out of scope this
   pass -- ground-level generated surfaces only (Claude).
+
+- 2026-09-20: A "do all 20" push against the roadmap from a full
+  project analysis. Full test/build re-verification first (125/125
+  EditMode, 18/18 PlayMode, 16/87, zero self-intersecting polygons on
+  the vehicles -- all unchanged, confirming last pass's work held).
+  Then, in order: (1) audited every assembly for the unused-reference
+  smell found twice before -- removed 18 more dead references across 6
+  assemblies (`Runtime` alone went from 10 references to 3), verified
+  safe by full recompile+retest after each batch. (2) Found the
+  "RivalIntimidation/TrackAI port" and "WTRLRuntime MonoBehaviour
+  wrapper" roadmap items were BOTH already done in earlier sessions --
+  `Racing/RivalIntimidation.cs`+`TrackAIDriver.cs`+their tests, and
+  `UI/VehicleRuntimeController.cs`'s real `FixedUpdate()` loop -- their
+  CONTRACT.md entries were just never updated when the work landed.
+  Fixed both stale entries (the same documentation-hygiene lesson
+  flagged three times now). (3) Found the real narrower gap inside the
+  intimidation "port": the intimidation-aware `TrackAiDriver.Input`
+  overload was tested in isolation but never called from the real
+  `AiVehicleSession.Step` loop -- wired it via new optional
+  `Intimidation`/`Proximity` properties, sampling
+  `RivalDeterministicSample` by the session's own advancing tick (not
+  wall-clock), confirmed deterministic-replay-safe by a test running
+  two independent sessions with identical inputs to bit-identical
+  results. (4) Built real contact/overtake DETECTION primitives
+  (`ContactDetector`/`TrackProgress`/`OvertakeTracker`) closing
+  `Career/CONTRACT.md`'s named blocker -- deliberately detection-only,
+  not yet wired into a caller with both vehicles' live state each
+  frame (real, separate follow-on work). (5) Wired `ResultsScreen` into
+  `VerticalSliceSceneBuilder` via new `RaceSessionController`, a real
+  `RaceFlowController` driven by an arcade-style start-zone lap
+  detector, wired to the same `CareerStateHolder` the scene already
+  builds -- the full drive->lap->finish->results->career chain now
+  exists in one scene. (6) Built `ContentValidator.cs`, the
+  "validators" half of `WTRL.Editor`'s original vision (only
+  "builders" existed before). (7) Investigated a duplicate-effort near-
+  miss: wrote a new `WTRL.Core.DeterministicSample` before discovering
+  `WTRL.Racing.RivalDeterministicSample` already existed identically
+  and is already the one everything uses -- deleted the duplicate
+  rather than ship two competing implementations, documented in
+  `Core/CONTRACT.md` so the next person checks first. (8) Resolved the
+  `hero-1965`/`hero_1967` naming question as a permanent decision (not
+  a rename): the research corpus itself flags `hero_1967`'s OEM specs
+  as an unresolved "researchGate," so there is no better data to
+  rename toward today -- documented in both `HeroContentBuilder.cs` and
+  `Editor/CONTRACT.md`. Remaining roadmap items (batch-converting the
+  parts research corpus into gameplay content, authoring more vehicle/
+  recipe/track content, the Workshop remove/install/repair/diagnose
+  flow, golden-fixture physics parity tests, vehicle-specific art
+  gates, vehicle PBR maps, prefab+physics-anchor generation, and World
+  district streaming) were investigated and scoped but not built this
+  pass -- each is a genuinely large, multi-session effort in its own
+  right, several needing either human visual judgment
+  (`REFERENCE-MODELING-ACCEPTANCE.md`'s unmet gates) or research data
+  that doesn't exist yet (no golden physics fixtures found anywhere in
+  `SwiftRacer`/`racinggame`), not something safely compressible into
+  this pass without risking exactly the kind of unverified, invented
+  content this project's whole discipline exists to prevent. 137/137
+  EditMode + 22/22 PlayMode tests pass (up from 125/18), 16 assemblies
+  / 92 C# files, no reference cycles (Claude).

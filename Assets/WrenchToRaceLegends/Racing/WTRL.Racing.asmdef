@@ -1,1 +1,1 @@
-{"name":"WTRL.Racing","rootNamespace":"WTRL.Racing","references":["WTRL.Core","WTRL.Vehicle","WTRL.Events"]}
+{"name":"WTRL.Racing","rootNamespace":"WTRL.Racing","references":["WTRL.Core","WTRL.Vehicle"]}

@@ -573,3 +573,28 @@ displacement/parallax mapping. Vehicle materials (paint/glass/trim)
 were NOT given PBR maps this pass -- this was scoped to the 3
 ground-level generated surfaces only. As always, nothing here has been
 confirmed by an actual screenshot or human eyes.
+
+## ResultsScreen finally wired into a real scene, via a new RaceSessionController (2026-09-20)
+
+Closes the honestly-flagged gap from the pass that built `ResultsScreen`:
+"NOT yet wired into `VerticalSliceSceneBuilder`'s scene -- that scene
+has no active `RaceFlowController` instance to bind to yet." New
+`RaceSessionController` owns exactly that: a real `RaceFlowController`
+for the `HeroVehicle`, driven through Loading -> Staging -> Countdown ->
+Racing every `Update`, with real lap detection off the vehicle's own
+transform (leaves a start-zone radius, then returns to it -- an
+arcade-standard heuristic, explicitly not a real finish-line-plane
+crossing detector; see the type's own doc comment for what it does and
+doesn't guard against). Wired into `VerticalSliceSceneBuilder.Build()`
+alongside a `ResultsScreen` on the same `HeroVehicle` GameObject, bound
+to the controller, with `RaceCompletionBridge` attached to the same
+`CareerStateHolder` the scene already builds -- the full real chain
+(drive -> lap -> finish -> results -> Continue -> career state update)
+now exists in one scene, not just as isolated, independently-tested
+pieces.
+
+4 new PlayMode tests drive the controller through a full 1-2 lap race
+via simulated vehicle movement (no IMGUI executes in headless runs, so
+`ResultsScreen.IsShowing`/`BuildSummaryText` and `CareerState` are
+asserted directly, same pattern as `ResultsScreenTests.cs`). 137/137
+EditMode + 22/22 PlayMode tests pass.

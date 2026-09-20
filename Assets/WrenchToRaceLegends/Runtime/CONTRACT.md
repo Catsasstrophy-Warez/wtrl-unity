@@ -136,13 +136,19 @@ earlier assemblies + 6 new Runtime tests), after fixing the
 - No scene-loading, results-flow, or `RaceState`-style 8-state wrapper
   around `WTRL.Events.RaceRuntimeState`'s 4-phase state machine (flagged
   as a Rev16.1-reuse-worthy pattern for later, not resumed this pass).
-- No Unity Editor has ever opened this project in any environment
-  across this entire session — every verification, including this one,
-  has been throwaway plain-.NET compilation, never an actual
-  Unity/IL2CPP build. `WTRLRuntime` has no `MonoBehaviour`/`Update()`
-  wrapper yet; that integration layer (calling `Advance` from Unity's
-  frame loop with `Time.deltaTime`) does not exist yet and is the
-  natural next step once a Unity Editor is available to verify it in.
+- ~~No Unity Editor has ever opened this project... `WTRLRuntime` has
+  no `MonoBehaviour`/`Update()` wrapper yet~~ -- **STALE, CLOSED before
+  2026-09-20**: this note predates the real Unity Editor becoming
+  available and was never updated. `WTRL.UI.VehicleRuntimeController`
+  IS that wrapper -- a real `MonoBehaviour` whose `FixedUpdate()` calls
+  `_runtime.Advance(Time.fixedDeltaTime, ...)` every physics tick, with
+  its own PlayMode tests (`Tests/PlayMode/
+  VehicleRuntimeControllerTests.cs`) driving it in a real Play session.
+  Found only because a "what's left" audit assumed this gap was still
+  open and went looking for it. Same documentation-hygiene lesson
+  flagged twice already elsewhere (`Career/CONTRACT.md`,
+  `Vehicle/CONTRACT.md`): strike the original gap entry in the same
+  pass that closes it.
 
 ## Device quality profiles (2026-09-20)
 

@@ -114,3 +114,44 @@ drives progression by straight-line distance, not waypoint-following.
 to confirm `TrackAiDriver.Perceive` never fails and every node is
 reachable in sequence for all 6 new lines, including shapes the AI
 driving code had never seen before (the procedurally-generated ovals).
+
+## Intimidation wiring closed: RivalIntimidation/TrackAI were already ported, now actually driven (2026-09-20)
+
+A "what's left" roadmap item asked for `RivalIntimidation.swift`/
+`TrackAI.swift` to be ported into `WTRL.Racing`. Found both already
+existed as real, tested code (`RivalIntimidation.cs`,
+`TrackAIDriver.cs`, `Tests/EditMode/RivalIntimidationTests.cs`) --
+`Vehicle/CONTRACT.md`'s "Not yet ported" note was simply never updated
+when that port landed (fixed there too). The actual remaining gap was
+narrower: `TrackAiDriver`'s intimidation-aware `Input` overload existed
+and was tested in isolation, but nothing in the real AI-driving loop
+(`AiVehicleSession.Step`) ever called it -- every AI-driven vehicle
+always used the plain, non-intimidation overload regardless of any
+`RivalIntimidationState` a caller might have.
+
+Closed by giving `AiVehicleSession` optional `Intimidation`/`Proximity`
+properties: when unset, behavior is byte-for-byte unchanged (every
+existing caller/test); when set, `Step` samples
+`RivalDeterministicSample` keyed by the session's own advancing tick
+(not wall-clock or a shared static RNG -- the same fixed-step-safe
+discipline the Swift original's own 2026-09-19 fix required) and calls
+the intimidation-aware overload. `WTRL.Racing` still has no dependency
+on `WTRL.Career` -- computing a real `RivalIntimidationState` from a
+career-level loss count remains the caller's job, same "resolved by the
+caller" discipline as every other definition in this assembly.
+
+Also added `ContactDetector`/`TrackProgress`/`OvertakeTracker`
+(`ContactDetector.cs`) -- real contact/overtake DETECTION primitives
+closing "the concrete, narrow blocker for further Career progress"
+named in `Career/CONTRACT.md`. Deliberately detection-only: wiring
+these into `RaceSessionController`/`RaceCompletionBridge` needs a
+caller with both vehicles' live simulation state each frame, which
+doesn't exist yet (player state lives in `VehicleRuntimeController`,
+rival state in `AiVehicleSession`, with no shared per-frame comparison
+point today) -- real, separate follow-on work.
+
+4 new PlayMode tests exercise the intimidation wiring through real
+physics (finite/stable over a 3600-step run, deterministic replay
+across two independent sessions given identical inputs). 8 new EditMode
+tests cover `ContactDetector`/`TrackProgress`/`OvertakeTracker`.
+137/137 EditMode + 22/22 PlayMode tests pass.

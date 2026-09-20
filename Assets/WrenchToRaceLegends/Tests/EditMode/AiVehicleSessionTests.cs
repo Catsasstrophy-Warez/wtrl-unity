@@ -114,5 +114,78 @@ namespace WTRL.Tests
             Assert.That(session.State.Z, Is.EqualTo(start.Z));
             Assert.That(session.LastPerception, Is.Null);
         }
+
+        // ---- Intimidation wiring: TrackAiDriver's intimidation-aware
+        // Input overload already existed and already had its own tests
+        // (RivalIntimidationTests.cs), but nothing in the actual AI-
+        // driving loop ever called it -- these tests exercise that the
+        // real loop now does, end to end through real physics. ----
+
+        [Test]
+        public void SessionWithoutIntimidationSetStillDrivesNormally()
+        {
+            // Default behavior must be unchanged for every existing
+            // caller that never sets Intimidation.
+            var session = MakeSession();
+            for (var i = 0; i < 600; i++) session.Step(1.0 / 60);
+
+            Assert.That(double.IsFinite(session.State.X), Is.True);
+            Assert.That(session.LastPerception, Is.Not.Null);
+        }
+
+        [Test]
+        public void HighBrakePointBiasIntimidationProducesFiniteStableDrivingOverALongRun()
+        {
+            var session = MakeSession();
+            session.Intimidation = new RivalIntimidationState
+            {
+                BrakePointBiasM = RivalIntimidation.MaxBrakePointBiasM,
+                DefensivePositionErrorM = RivalIntimidation.MaxDefensivePositionErrorM,
+                PassAttemptSuppression = 1.0,
+                LaunchReactionDelayMs = 0,
+            };
+            session.Proximity = new TrackAiDriver.PlayerProximity(isAlongside: true, rivalIsBehindPlayer: false);
+
+            for (var i = 0; i < 3600; i++)
+            {
+                session.Step(1.0 / 60);
+                Assert.That(double.IsFinite(session.State.X), Is.True);
+                Assert.That(double.IsFinite(session.State.Z), Is.True);
+                Assert.That(double.IsFinite(session.State.SpeedMps), Is.True);
+            }
+        }
+
+        [Test]
+        public void IntimidationSampleAdvancesDeterministicallyWithEachStepsTick()
+        {
+            // Two sessions given the exact same intimidation state and
+            // proximity, stepped the same number of times, must produce
+            // bit-identical state -- the sample channel is keyed by this
+            // session's own advancing tick counter (not wall-clock or a
+            // shared static RNG), so two independent sessions replaying
+            // the same inputs replay identically.
+            RivalIntimidationState MakeState() => new()
+            {
+                BrakePointBiasM = 5,
+                DefensivePositionErrorM = 1,
+                PassAttemptSuppression = 0.5,
+                LaunchReactionDelayMs = 0,
+            };
+
+            var sessionA = MakeSession();
+            sessionA.Intimidation = MakeState();
+            var sessionB = MakeSession();
+            sessionB.Intimidation = MakeState();
+
+            for (var i = 0; i < 500; i++)
+            {
+                sessionA.Step(1.0 / 60);
+                sessionB.Step(1.0 / 60);
+            }
+
+            Assert.That(sessionA.State.X, Is.EqualTo(sessionB.State.X));
+            Assert.That(sessionA.State.Z, Is.EqualTo(sessionB.State.Z));
+            Assert.That(sessionA.State.SpeedMps, Is.EqualTo(sessionB.State.SpeedMps));
+        }
     }
 }

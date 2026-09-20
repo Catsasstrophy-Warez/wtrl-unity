@@ -49,9 +49,17 @@ throughout `Tests/EditMode` (`WTRLRuntimeTests.MakeVehicle`/
 treats as a plausible mid-60s muscle-car baseline. They are **not**
 sourced/cited research-corpus data the way this project's other
 content is graded — see `HeroContentBuilder.cs`'s own doc comment for
-the full caveat, including the still-unresolved `hero-1965` (code
-default) vs. `hero_1967` (research corpus's actual first hero
-generation) naming mismatch.
+the full caveat.
+
+**Naming decision, resolved 2026-09-20** (previously open): `hero-1965`
+(code default) vs. `hero_1967` (research corpus's actual first hero
+generation) stays as `hero-1965` permanently, not renamed. The corpus's
+own `hero_generation_catalog.json` flags `hero_1967`'s OEM torque
+values and period routing as unresolved "researchGates" -- there is no
+better sourced data to switch to today, and renaming would break
+`CareerState.SelectedVehicleId`'s default, every persistence test, and
+all 5 `hero1965-*` `CanonicalBuildRecipes` entries for zero real gain.
+Revisit if/when hero_1967's real specs are actually researched.
 
 ## Second builder: Marsh Gen 1 (2026-09-20)
 
@@ -74,3 +82,41 @@ AI-controlled real physics end to end.
   real research-corpus JSON catalogs to these builders — both builders
   hardcode their numbers in C#, neither reads from any external data
   source yet.
+
+## Real content validators + a systemic unused-asmdef-reference audit (2026-09-20)
+
+New `ContentValidator.cs` (`Assets/WTRL/Validate Content`) is the
+"validators" half of this assembly's original vision (PIVOT-PLAN.md
+described "content builders, validators" together; only builders
+existed until now). Checks the specific real invariants this project's
+content has actually needed guarded: no duplicate
+`CanonicalBuildRecipes` ids, exactly 5 recipes per vehicle generation,
+non-degenerate weight-to-power bounds, and every `Racing.SampleContent`
+track-id constant resolving to a real, non-empty racing line whose own
+`TrackId` matches. Most of these are already guarded by
+`BuildRecipeTests`/`SampleContentTests`; this exposes the same checks
+as a real Editor menu command runnable without opening the test
+runner. Required re-adding `WTRL.Garage` to this assembly's own
+references (removed in the audit below, then genuinely needed again by
+this new file) -- a real example of why "remove everything unused"
+audits should re-verify after each subsequent real addition, not just
+once.
+
+Also ran a project-wide audit for the exact class of bug found twice
+already (`Persistence`/`Career` referencing assemblies they didn't use)
+across all 16 assemblies: found and removed 18 more dead references
+across `Editor` (8: World/Events/Garage/Lab/RPG/Career/Persistence/
+Runtime), `Events` (2: Vehicle/World), `Lab` (1: Racing), `Racing` (1:
+Events), `Runtime` (7: World/Events/Racing/Garage/RPG/Career/
+Persistence), and `UI` (1: RPG). Every removal was verified real (not
+just a `using` check, since implicit compiler-recognized types like
+`WTRL.Core`'s `IsExternalInit` polyfill are used with no `using`
+statement anywhere -- excluded from this audit for that reason) via
+grep for both `using X` and qualified `X.Type` references, then
+confirmed safe by a full recompile + test rerun after each batch of
+removals (never broke a single test). `WTRL.Runtime` in particular went
+from 10 references down to 3 (`Core`, `Vehicle`, `Lab`) -- it turned
+out to genuinely need almost none of what its asmdef claimed.
+
+137/137 EditMode + 22/22 PlayMode tests pass throughout, 16 assemblies
+/ 92 C# files, no reference cycles.

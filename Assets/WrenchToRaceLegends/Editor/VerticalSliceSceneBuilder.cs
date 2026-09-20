@@ -93,6 +93,17 @@ namespace WTRL.EditorTools
 
             BuildAudioRig(vehicleGo, controller);
 
+            // Real RaceFlowController wiring -- closes "ResultsScreen
+            // isn't wired into any scene with an active
+            // RaceFlowController" from the UI/CONTRACT.md gap list.
+            // See RaceSessionController.cs's own doc comment for the
+            // honest scope limit on its lap-detection heuristic.
+            var resultsScreen = vehicleGo.AddComponent<ResultsScreen>();
+            var raceSession = vehicleGo.AddComponent<RaceSessionController>();
+            SetPrivateField(raceSession, "vehicleTransform", vehicleGo.transform);
+            SetPrivateField(raceSession, "resultsScreen", resultsScreen);
+            SetPrivateField(raceSession, "careerState", careerHolder);
+
             // Reloaded here, right before use, rather than held from
             // before EditorSceneManager.NewScene() ran -- an earlier
             // version loaded this alongside heroAsset up front and it

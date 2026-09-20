@@ -32,3 +32,20 @@ any shared value types more than one of `WTRL.Vehicle`/`WTRL.World`/
 
 Update this file the moment something real lands here — an empty
 contract for a non-empty assembly is worse than no contract at all.
+
+## The deterministic hash/RNG helper this file suggested already exists -- in WTRL.Racing, not here (2026-09-20)
+
+While closing a "what's left" roadmap item ("add a shared deterministic
+hash/RNG helper to WTRL.Core"), found that `WTRL.Racing
+.RivalDeterministicSample` (`Racing/RivalBehaviorRuntime.cs`) is
+already exactly that helper -- a real FNV-1a port of SwiftRacer's
+`RivalDeterministicSample`, already used by `TrackAiDriver`'s
+intimidation-aware `Input` overload, already tested
+(`RivalIntimidationTests.cs`). A duplicate `WTRL.Core.DeterministicSample`
+was written and then deleted once this was found, rather than shipping
+two competing implementations. Not moved into `WTRL.Core` either --
+that would mean updating every existing call site and test for a purely
+architectural tidiness gain, not a real fix. This file's own candidate
+list is left as-is for now (still accurate as a description of what
+*could* live here), but the actual helper genuinely already exists;
+check `Racing/RivalBehaviorRuntime.cs` before writing a new one.

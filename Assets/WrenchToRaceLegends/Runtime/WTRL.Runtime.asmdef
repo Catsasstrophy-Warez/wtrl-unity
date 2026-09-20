@@ -1,1 +1,1 @@
-{"name":"WTRL.Runtime","rootNamespace":"WTRL.Runtime","references":["WTRL.Core","WTRL.Vehicle","WTRL.World","WTRL.Events","WTRL.Racing","WTRL.Garage","WTRL.Lab","WTRL.RPG","WTRL.Career","WTRL.Persistence"]}
+{"name":"WTRL.Runtime","rootNamespace":"WTRL.Runtime","references":["WTRL.Core","WTRL.Vehicle","WTRL.Lab"]}

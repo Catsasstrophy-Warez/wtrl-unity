@@ -130,8 +130,19 @@ rewrite should be needed) as the next verification step.
 
 ## Not yet ported
 
-- `RivalIntimidation.swift`, `TrackAI.swift` → `WTRL.Racing` (depends on
-  this assembly's types but isn't part of it).
+- ~~`RivalIntimidation.swift`, `TrackAI.swift` → `WTRL.Racing`~~ --
+  **STALE, CLOSED before 2026-09-20**: this note was never updated when
+  the port actually landed. Both exist as real, tested code
+  (`Racing/RivalIntimidation.cs`, `Racing/TrackAIDriver.cs`,
+  `Tests/EditMode/RivalIntimidationTests.cs`), and as of 2026-09-20
+  `Racing/AiVehicleSession.cs` actually calls the intimidation-aware
+  `TrackAiDriver.Input` overload (previously implemented, tested, and
+  never called from the real AI-driving loop) via an optional
+  `Intimidation`/`Proximity` pair a caller sets. Found only because a
+  "what's left" audit turned up `RivalIntimidationTests.cs` already
+  passing when this note claimed the port didn't exist -- the same
+  documentation-hygiene lesson `Career/CONTRACT.md` already flagged
+  once: strike the original gap entry in the same pass that closes it.
 - `EnrichedRev36VehicleCatalog.swift`, `CanonicalContent.swift`'s actual
   vehicle/engine/transmission/suspension/tire data → wherever the content
   catalog ends up living (see deviation #1 above — this is now an open

@@ -24,14 +24,26 @@ namespace WTRL.EditorTools
     /// /MakeEngine/...`) for consistency with what the test suite already
     /// treats as a plausible mid-60s muscle-car baseline. They are NOT
     /// sourced/cited research-corpus data the way the project's other
-    /// content is graded (see `10-vehicle-research-library`) -- replace
-    /// with real hero_1967-generation spec data (`ImportedVehicleCorpus/
-    /// Content/HeroCars/hero_generation_catalog.json` and its dossiers)
-    /// before treating this as canonical content. The `hero-1965` id
-    /// itself is kept because it's already the default `CareerState
-    /// .SelectedVehicleId` and appears throughout the persistence tests;
-    /// reconciling it with the research corpus's `hero_1967` naming is a
-    /// separate open question, not solved by this builder.
+    /// content is graded (see `10-vehicle-research-library`).
+    ///
+    /// NAMING DECISION (resolved 2026-09-20, previously an open
+    /// question): the `hero-1965` id is kept permanently, NOT renamed to
+    /// the research corpus's `hero_1967`. Checked what replacing it
+    /// would actually require: `ImportedVehicleCorpus/Content/HeroCars/
+    /// hero_generation_catalog.json`'s own `hero_1967` entry lists
+    /// `"researchGates": ["OEM torque values", "period routing"]` --
+    /// the corpus itself has NOT resolved real numeric specs for this
+    /// generation yet, so there is no better sourced data to switch to
+    /// today. Renaming the id without better data would just move the
+    /// placeholder-fixture problem to a differently-spelled id, while
+    /// breaking `hero-1965` as `CareerState.SelectedVehicleId`'s
+    /// default, every persistence test, and all 5 `hero1965-*` entries
+    /// in `Garage.CanonicalBuildRecipes` -- real, currently-passing
+    /// tests, for zero real gain. If/when hero_1967's OEM specs are
+    /// actually researched, that is the point to revisit this id
+    /// (and re-derive `CanonicalBuildRecipes`' hero1965-* weight-to-
+    /// power bands from the real horsepower figures at the same time,
+    /// same as every other generation's recipes already are).
     /// </summary>
     public static class HeroContentBuilder
     {
