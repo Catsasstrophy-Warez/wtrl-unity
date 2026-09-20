@@ -237,6 +237,29 @@ than assuming it.
    `WTRL.Core`'s is short because the assembly is still empty — nothing
    in the `WTRL.Vehicle` port needed anything from it.
 
+## Assembly decision index
+
+One line per assembly's `CONTRACT.md`, so "what did we decide and why"
+doesn't require opening eleven files to answer. Full reasoning always
+lives in the linked file — this is a pointer, not a replacement.
+
+| Assembly | CONTRACT.md | Key decision / deviation |
+|---|---|---|
+| Core | `Core/CONTRACT.md` | Empty — no assembly has needed anything from it yet. |
+| Vehicle | `Vehicle/CONTRACT.md` | No content catalog: every definition is a required caller-supplied parameter. Definitions are C# `record`s (for `with`-copying). |
+| Racing | `Racing/CONTRACT.md` | `RivalBehaviorRuntime` is a mutable class (deviation from Swift's struct) so its memory/intimidation state can be shared by reference across a session. |
+| Garage | `Garage/CONTRACT.md` | `VehicleConfigurationResolver` uses `with`-expressions on Vehicle's records; first place the record conversion paid off. |
+| Lab | `Lab/CONTRACT.md` | `RuntimeTelemetryRing` is a fixed-capacity circular buffer, not an unbounded list — bounds memory for long play sessions. |
+| RPG | `RPG/CONTRACT.md` | New layer, no Swift source. `BuildRecipeProgress` references a Garage `BuildRecipeDefinition` by string id only, to avoid an RPG→Garage type dependency (see Career/Garage/RPG three-way tradeoff below). |
+| BuildRecipe (Garage/RPG boundary) | `Garage/CONTRACT.md`, `RPG/CONTRACT.md` | Satisfaction-check logic lives in Garage (needs Vehicle/Engine types); the progression/reward wrapper lives in RPG (string-id reference only) — resolved 3-way tradeoff, not a default. |
+| World | `World/CONTRACT.md` | `StableWorldSeed` has a documented 32-bit-vs-64-bit-Int numerical deviation from Swift's original. |
+| Events | `Events/CONTRACT.md` | Real 4-phase `RaceRuntimeState`, not Rev16.1's 8-state shape — the 8-state wrapper is flagged as future work once scene-loading exists, not implemented speculatively. |
+| Career | `Career/CONTRACT.md` | `CareerState.Clone()`/`CopyFrom()` must both list every field or transactions silently reset unlisted fields to default — caught once already; documented as a standing warning for the next field added. |
+| Persistence | `Persistence/CONTRACT.md` | Added a real (mechanical, not architectural) `WTRL.Racing` asmdef dependency. `runEvidence`/`dynoRuns`/`ghostReplays` deliberately not in the save DTO yet (flagged, not silently dropped). |
+| Runtime | `Runtime/CONTRACT.md` | `new FixedStepClock()` silently zero-inits instead of calling its `hz=120` constructor (struct-specific C# gotcha) — caught by `dotnet test` hanging, not by the compiler or reading. First bug this whole pass caught only by running tests. |
+| Content | `Content/CONTRACT.md` | New assembly answering "who owns content resolution": `ScriptableObject` wrappers with direct object references, still no lookup-by-id anywhere. Unverified — cannot be compiled outside a licensed Unity Editor. |
+| UI | `UI/CONTRACT.md` | First `MonoBehaviour` (`VehicleRuntimeController`) — smallest possible vertical slice (Content asset → Runtime → Transform). Unverified for the same reason as Content. |
+
 ## Changelog
 
 - 2026-09-19: Initial pivot plan and project skeleton created (Claude).
@@ -421,3 +444,34 @@ than assuming it.
   Editor-side integration (MonoBehaviour wrappers, scene setup) which
   cannot be verified further via throwaway `dotnet` projects alone
   (Claude).
+- 2026-09-20: Full-project analysis and recommendations pass. Attempted
+  the top recommendation (open the project in a real Unity Editor for
+  the first time) via `Unity.exe -batchmode -nographics -quit`: it hung
+  indefinitely at `[Licensing::Module] Licensing is not yet
+  initialized.`, waiting for an interactive license activation that
+  requires the user's own sign-in. Killed the process rather than leave
+  it running — **this remains blocked on the user activating a Unity
+  license themselves**, and is still the single highest-priority next
+  action once that's done. Corrected an error from the prior day's
+  analysis: `racinggame`'s two ~85MB `.zip` files were already
+  `.gitignore`d and never committed — no repo-bloat cleanup was
+  actually needed there.
+  Made progress on everything not gated by a licensed Editor: added
+  `WTRL.Content` (new assembly — `ScriptableObject` wrappers around
+  `WTRL.Vehicle`'s definitions, answering the long-flagged "who owns
+  content resolution" question without reintroducing a lookup-by-id
+  catalog) and gave `WTRL.UI` its first real code
+  (`VehicleRuntimeController`, a `MonoBehaviour` wiring a Content asset
+  through `WTRLRuntime.Advance` to a `Transform` — the smallest
+  possible end-to-end vertical slice). **Both are explicitly
+  UNVERIFIED** — they reference `UnityEngine`, so this project's usual
+  `dotnet build`/`dotnet test` verification method does not apply, and
+  no licensed Editor was available to compile them for real. Said so
+  plainly in both new `CONTRACT.md` files rather than presenting them
+  as verified work; deliberately did not hand-author any `.unity`
+  scene or ScriptableObject `.asset` file, since a malformed one would
+  be a worse outcome than no scene at all — those need the Editor's
+  own Create menu. Added the "Assembly decision index" table above so
+  the now-thirteen `CONTRACT.md` files have a single one-line-per-
+  assembly pointer instead of requiring a full read of each to answer
+  "what did we decide and why" (Claude).
